@@ -38,12 +38,21 @@
 #include <autostart.h>
 
 PROCESS_NAME(hello_world_process);
+#ifdef SENSOR_APP
 PROCESS_NAME(sensor_app_monitor_process);
 PROCESS_NAME(sensor_app_display_process);
+#endif
+#ifdef ALARM_APP
+PROCESS_NAME(ds3231_alarm_process);
+#endif
 
 AUTOSTART_PROCESSES(
 	&hello_world_process,
+#ifdef SENSOR_APP
 	&sensor_app_monitor_process,
-	&sensor_app_display_process
+	&sensor_app_display_process,
+#endif
+#ifdef ALARM_APP
+	&ds3231_alarm_process
+#endif
 );
-

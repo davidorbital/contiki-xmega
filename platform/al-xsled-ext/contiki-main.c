@@ -45,9 +45,14 @@
 #include <dev/watchdog.h>
 #include <dev/rs232.h>
 #include <dev/leds.h>
+#include <dev/twi-master.h>
+
+#include <dev/sht21-sensor.h>
+#include <dev/ds3231-sensor.h>
 
 #define ANNOUNCE_BOOT 1
-#define DEBUG
+
+//#define DEBUG
 #ifdef DEBUG
 #define dprintf(FORMAT, args...) printf_P(PSTR(FORMAT), ##args)
 #else
@@ -150,6 +155,9 @@ static void initalize(void)
 #if ANNOUNCE_BOOT
 	printf_P(PSTR("\n*******Booting %s*******\n"), CONTIKI_VERSION_STRING);
 #endif
+	dprintf("int size  : %d\n", sizeof(int));
+	dprintf("long size : %d\n", sizeof(long));
+	dprintf("ptr size : %d\n", sizeof(char*));
 
 	/* Watchdog */
 	if (RST.STATUS & RST_WDRF_bm) {
@@ -164,8 +172,16 @@ static void initalize(void)
 	/* Clock */
 	clock_init();
 
+	/* TWI */
+	if (twi_init(&TWIC, TWI_BAUD(MCU_HZ, TWI_100KHZ)) != 0) {
+		printf_P(PSTR("Boot halted, TWI failed init!\n"));
+		leds_on(LED_ALERT);
+		while (1);
+	}
+
 	/* SPI Busses */
 	spi_init_multi(spi_slaves, 1);
+#ifdef SENSOR_APP
 	if (sd_init() != 0) {
 		printf_P(PSTR("Boot halted, SD-card failed init!\n"));
 		leds_on(LED_ALERT);
@@ -176,7 +192,6 @@ static void initalize(void)
 		leds_on(LED_ALERT);
 		while (1);
 	}
-#ifdef SENSOR_APP
 	if (sensor_db_init() != 0) {
 		printf_P(PSTR("Boot halted, Sensor DB failed init!\n"));
 		leds_on(LED_ALERT);

@@ -40,9 +40,15 @@
 #include <antelope.h>
 #include <avr/pgmspace.h>
 #include <dev/xmega-sensor.h>
+#include <dev/sht21-sensor.h>
+#include <dev/ds3231-sensor.h>
+
 
 #define SENSOR_XMEGA_TEMP		1
 #define SENSOR_XMEGA_VCC		2
+#define SENSOR_SHT_TEMP			3
+#define SENSOR_SHT_HUMIDITY		4
+#define SENSOR_RTC_TEMP			5
 
 //#define DEBUG
 #ifdef DEBUG
@@ -239,6 +245,9 @@ parse_samples_since(long since_time)
 			printf_P(PSTR("sensor/value/time:%d,%ld,%ld\n"),
 					(int)VALUE_INT(&sensor_id), (long)VALUE_LONG(&value),
 					(long)VALUE_LONG(&time));
+			// TODO implement printing with scale as follows:
+			//printf_P(PSTR("    Humidity %2d.%02d, Temperature %2d.%02d, Temperature %2d.%02d\n"),
+			//		hu / 100, hu % 100, te / 100, te % 100, te_rtc / 100, te_rtc % 100);
 			continue;
 		case DB_FINISHED:
 		default:
@@ -277,11 +286,19 @@ PROCESS_THREAD(sensor_app_monitor_process, ev, data)
 
 	/* Enable XMega on-chip sensors. */
 	SENSORS_ACTIVATE(xmega_sensor);
+	SENSORS_ACTIVATE(sht21_sensor);
+	SENSORS_ACTIVATE(ds3231_sensor);
 
 	/* Initialise storage database. */
-	if (create_sensor(SENSOR_XMEGA_TEMP, "XTEMP", "degC", 10) != 0)
+	if (create_sensor(SENSOR_XMEGA_TEMP, "XMEGA_TEMP", "degC", 10) != 0)
 		goto process_end;
 	if (create_sensor(SENSOR_XMEGA_VCC, "XMEGA_VCC", "mV", 1) != 0)
+		goto process_end;
+	if (create_sensor(SENSOR_SHT_TEMP, "SHT_TEMP", "degC", 100) != 0)
+		goto process_end;
+	if (create_sensor(SENSOR_SHT_HUMIDITY, "SHT_HUM", "RH%", 100) != 0)
+		goto process_end;
+	if (create_sensor(SENSOR_RTC_TEMP, "RTC_TEMP", "degC", 100) != 0)
 		goto process_end;
 
 	/* Start the measurement loop, each 10 seconds. */
@@ -295,8 +312,12 @@ static int i = 3;
 #endif
 		PROCESS_WAIT_EVENT_UNTIL(ev == PROCESS_EVENT_TIMER);
 		etimer_reset(&timer_monitor);
+
 		add_sample(SENSOR_XMEGA_TEMP, xmega_sensor.value(XMEGA_SENSOR_TEMP));
 		add_sample(SENSOR_XMEGA_VCC, xmega_sensor.value(XMEGA_SENSOR_VCC));
+		add_sample(SENSOR_SHT_TEMP, xmega_sensor.value(SHT21_SENSOR_TEMP));
+		add_sample(SENSOR_SHT_HUMIDITY, xmega_sensor.value(SHT21_SENSOR_HUMIDITY));
+		add_sample(SENSOR_RTC_TEMP, xmega_sensor.value(DS3231_SENSOR_TEMP));
 
 #ifdef SENSOR_APP_DEBUG
 		i--;

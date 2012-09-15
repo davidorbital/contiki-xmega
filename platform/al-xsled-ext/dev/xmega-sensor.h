@@ -54,7 +54,7 @@
  *
  * 		#include <dev/xmega-sensor.h>
  *
- * 		xmega_sensor.value(XMEGA_SENSOR_TEMP);	// Temperature in d¡C
+ * 		xmega_sensor.value(XMEGA_SENSOR_TEMP);	// Temperature in dC
  * 		xmega_sensor.value(XMEGA_SENSOR_VCC);	// VCC in mV
  */
 extern const struct sensors_sensor xmega_sensor;

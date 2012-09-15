@@ -11,6 +11,7 @@
 
 /* MCU and clock rate */
 #define MCU_MHZ 32.0
+#define MCU_HZ 32000000
 #define PLATFORM PLATFORM_AVR
 
 /* Clock ticks per second */
@@ -61,9 +62,10 @@
 #define DB_MAX_ATTRIBUTES_PER_RELATION	4
 
 /* Options */
-#define SENSOR_APP			1
-#define SENSOR_APP_DEBUG	1
+//#define SENSOR_APP			1
+//#define SENSOR_APP_DEBUG	1
 //#define WATCHDOG_ENABLE	1
 //#define FORMAT_SD_CARD	1
+//#define ALARM_APP			1
 
 #endif /* __CONTIKI_CONF_H__ */
