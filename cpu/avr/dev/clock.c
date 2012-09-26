@@ -113,7 +113,7 @@ clock_init(void)
 #define XMEGA_OSC_SOURCE OSC_RC2MEN_bm
 #endif
 #ifndef XMEGA_CLOCK_SOURCE
-#define XMEGA_CLOCK_SOURCE 0
+#define XMEGA_CLOCK_SOURCE CLK_SCLKSEL_RC2M_gc
 #endif
 	if ((CLK.LOCK & CLK_LOCK_bm) == 0) {
 		/* Clock is not setup, setup now. */

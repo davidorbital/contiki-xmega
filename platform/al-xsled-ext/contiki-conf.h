@@ -14,14 +14,14 @@
 #define MCU_HZ 32000000
 #define PLATFORM PLATFORM_AVR
 
-/* Clock ticks per second */
-#define CLOCK_CONF_SECOND 125
+/* Clock setup internal 32MHz. */
+#define XMEGA_OSC_SOURCE OSC_RC32MEN_bm
+#define XMEGA_CLOCK_SOURCE CLK_SCLKSEL_RC32M_gc
 
-/* Clock setup; internal 2MHz, count to 250, prescale 64 (125*64*262=2M). */
-#define XMEGA_OSC_SOURCE OSC_RC2MEN_bm
-#define XMEGA_CLOCK_SOURCE 0
+/* Timer setup, need 125 ticks (32MHz / 1024 / 250 = 125). */
+#define CLOCK_CONF_SECOND 125
 #define XMEGA_TIMER_TOP 250
-#define XMEGA_TIMER_PRE TC_CLKSEL_DIV64_gc
+#define XMEGA_TIMER_PRE TC_CLKSEL_DIV1024_gc
 
 /* Maximum time interval (used for timers) */
 #define INFINITE_TIME 0xffff

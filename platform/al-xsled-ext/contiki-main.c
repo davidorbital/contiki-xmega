@@ -148,8 +148,11 @@ static void initalize(void)
 	interrupt_init(PMIC_CTRL_HML_gm);
 	interrupt_start();
 
+	/* Clock */
+	clock_init();
+
 	/* Console */
-	rs232_init(RS232_USARTD1, XMEGA_BAUD_ASYNC_115200,
+	rs232_init(RS232_USARTD1, XMEGA_BAUD_ASYNC_115200_32M,
 			USART_MODE_ASYNC | USART_PARITY_NONE | USART_STOP_BITS_1 | USART_DATA_BITS_8);
 	rs232_redirect_stdout(RS232_USARTD1);
 #if ANNOUNCE_BOOT
@@ -168,9 +171,6 @@ static void initalize(void)
 	watchdog_init();
 	watchdog_start();
 #endif
-
-	/* Clock */
-	clock_init();
 
 	/* TWI */
 	if (twi_init(&TWIC, TWI_BAUD(MCU_HZ, TWI_100KHZ)) != 0) {

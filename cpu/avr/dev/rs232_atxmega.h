@@ -123,9 +123,10 @@
  * XMEGA baud rates. The lower byte goes to BAUDL(BAUDCTRLA) and the higher
  * byte goes to BAUDH(BAUDCTRLB).
  */
-#define XMEGA_BAUD_ASYNC_9600		0x000C
-#define XMEGA_BAUD_ASYNC_115200		0xA005
-
+#define XMEGA_BAUD_ASYNC_9600			0x000C
+#define XMEGA_BAUD_ASYNC_115200			0xA005
+#define XMEGA_BAUD_ASYNC_115200_2M		XMEGA_BAUD_ASYNC_115200
+#define XMEGA_BAUD_ASYNC_115200_32M		0xA417
 
 
 /******************************************************************************/
