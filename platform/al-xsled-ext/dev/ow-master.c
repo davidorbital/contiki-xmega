@@ -114,6 +114,10 @@ ow_reset(ow_xmega_master_t *master)
 	sample = master->port->IN & master->pin_bm;
 	_delay_us(410);
 
+	if (sample) {
+		dprintf("OW - reset no devices!\n");
+	}
+
 	return sample ? NO_OW_DEVICES : SOME_OW_DEVICES;
 }
 
@@ -168,8 +172,9 @@ ow_transaction(ow_xmega_master_t *master, uint8_t* write, uint8_t write_len,
 		while (read_len--) {
 			bits = 8;
 			while (bits--) {
-				byte = byte << 1;
-				byte |= ow_read_bit(master) & 0x01;
+				byte >>= 1;
+				if (ow_read_bit(master))
+					byte |= 0x80;
 			}
 
 			dprintf("OW -           0x%02x\n", byte);
@@ -178,4 +183,13 @@ ow_transaction(ow_xmega_master_t *master, uint8_t* write, uint8_t write_len,
 	}
 
 	return COMPLETED;
+}
+
+/**
+ *
+ */
+void
+ow_wait_on_read(ow_xmega_master_t *master, uint8_t value)
+{
+	while ((ow_read_bit(master) & 0x01) != (value & 0x01));
 }

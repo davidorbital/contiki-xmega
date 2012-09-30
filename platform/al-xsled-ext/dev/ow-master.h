@@ -48,6 +48,7 @@ typedef struct {
 
 int ow_init(ow_xmega_master_t *master);
 int ow_transaction(ow_xmega_master_t *master, uint8_t* write, uint8_t write_len,
-		uint8_t* read, uint8_t read_len)
+		uint8_t* read, uint8_t read_len);
+void ow_wait_on_read(ow_xmega_master_t *master, uint8_t value);
 
 #endif /* __OW_XMEGA_MASTER_H__ */
