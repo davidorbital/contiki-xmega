@@ -47,12 +47,12 @@ PROCESS_NAME(ds3231_alarm_process);
 #endif
 
 AUTOSTART_PROCESSES(
-	&hello_world_process,
+	&hello_world_process
 #ifdef SENSOR_APP
-	&sensor_app_monitor_process,
-	&sensor_app_display_process,
+	,&sensor_app_monitor_process
+	,&sensor_app_display_process
 #endif
 #ifdef ALARM_APP
-	&ds3231_alarm_process
+	,&ds3231_alarm_process
 #endif
 );
