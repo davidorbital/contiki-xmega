@@ -6,6 +6,7 @@ void
 cpu_init(void)
 {
   asm volatile ("clr r1");	/* No longer needed. */
+  
 }
 
 extern int __bss_end;

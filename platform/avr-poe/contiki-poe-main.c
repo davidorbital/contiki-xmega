@@ -34,7 +34,7 @@
 
 #define ANNOUNCE_BOOT 1    //adds about 600 bytes to program size
 
-#define DEBUG 0
+#define DEBUG 1
 #if DEBUG
 #define PRINTF(FORMAT,args...) printf_P(PSTR(FORMAT),##args)
 #define PRINTSHORT(FORMAT,args...) printf_P(PSTR(FORMAT),##args)
@@ -63,6 +63,8 @@
 #include "interrupt.h"
 
 #include <util/delay.h>
+
+#include "xPLimpl.h"
 
 #ifdef POE_LCD_TEST
 #include "lcd-test.h"
@@ -122,8 +124,9 @@ void initialize(void)
 //
   interrupt_init( PMIC_CTRL_HML_gm);
   interrupt_start();
+  initPWM();
   
-  rs232_init(RS232_USARTE0, XMEGA_USART_CALC(9600) ,USART_PARITY_NONE | USART_STOP_BITS_1 | USART_DATA_BITS_8);
+  rs232_init(RS232_USARTE0, XMEGA_USART_CALC(115200) ,USART_PARITY_NONE | USART_STOP_BITS_1 | USART_DATA_BITS_8);
 
 
   rs232_redirect_stdout(RS232_USARTE0);
@@ -192,7 +195,12 @@ void log_message(char *m1, char *m2)
 int
 main(void)
 {
-
+    
+    //had to add for quick setting on boot
+    
+    PORTE.DIRSET = 1<<1;
+    PORTE.OUTSET = 1<<1;
+    
   initialize();
   while(1) {
     watchdog_periodic();

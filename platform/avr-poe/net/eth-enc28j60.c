@@ -16,6 +16,9 @@
 #include "eth-enc28j60.h"
 #include <enc28j60pins.h>
 
+//just so we can send stupid \r.
+#include "dev/rs232.h"
+
 //
 
 #ifndef ALIBC_OLD
@@ -42,40 +45,36 @@ uint16_t totalPacketSize;
 
 
 
-// set CS to 0 = active
-//#define CSACTIVE ENC28J60_CONTROL_PORT&=~(1<<ENC28J60_CONTROL_CS)
 #define CSACTIVE ENC28J60_CONTROL_CS_PORT.OUTCLR = (1<<ENC28J60_CONTROL_CS)
-// set CS to 1 = passive
-//#define CSPASSIVE ENC28J60_CONTROL_PORT|=(1<<ENC28J60_CONTROL_CS)
 #define CSPASSIVE ENC28J60_CONTROL_CS_PORT.OUTSET = (1<<ENC28J60_CONTROL_CS)
+
+
+// set CS to 0 = active
+//
 //
 #define waitspi() while(!(SPID.STATUS & SPI_IF_bm))
 
 
 void enc28j60Reset(void) {
-            /* enable PB0, reset as output */
-       // ENC28J60_CONTROL_DDR |= (1<<ENC28J60_CONTROL_RESET);
-
-        /* set output to gnd, reset the ethernet chip */
-        //ENC28J60_CONTROL_PORT &= ~(1<<ENC28J60_CONTROL_RESET);
-       // _delay_ms(20);
-        
-        /* set output to Vcc, reset inactive */
-       // ENC28J60_CONTROL_PORT |= (1<<ENC28J60_CONTROL_RESET);
-
+//     printf("begin HW reset\n");
+//             /* enable PB0, reset as output */
+//             ENC28J60_CONTROL_RESET_PORT.DIRSET = 1<<ENC28J60_CONTROL_RESET;
+// 
+//         /* set output to gnd, reset the ethernet chip */
+//         ENC28J60_CONTROL_RESET_PORT.OUTCLR = (1<<ENC28J60_CONTROL_RESET);
+//        _delay_ms(20);
+//         
+//         /* set output to Vcc, reset inactive */
+//         ENC28J60_CONTROL_RESET_PORT.OUTSET = (1<<ENC28J60_CONTROL_RESET);
+       printf("begin reset\n");
     _delay_ms(100);
     //perform a software reset
     CSACTIVE;
     // issue write command
     SPIPORT.DATA = 0xff;
-
     waitspi();
-
-
     CSPASSIVE;
-
     _delay_ms(100);
-
     //enc28j60PhyWrite(PHLCON, 0b0000110110100000);
     enc28j60PhyWrite(PHCON1, 0x8000);
     _delay_ms(1800);
@@ -224,8 +223,30 @@ void enc28j60PhyWrite(uint8_t address, uint16_t data)
 
 void enc28j60Init(uip_eth_addr* macaddr)
 {
+    
+    uint8_t test=0;
+    
+    
+//     _delay_ms(1);
+//     while(1) {
+//         uint8_t i;
+//         for(i=0;i<test;i++) {
+//             PORTA.DIRSET = 1<<3;
+//             _delay_ms(1);
+//             PORTA.OUTSET = 1<<3;
+//             _delay_ms(1);
+//             PORTA.OUTCLR = 1<<3;
+//             
+//         }
+//         test+=1;
+//         if(test>10)
+//             test=0;
+//         _delay_ms(500);
+//         printf("printf working %d\n", test);
+//     }
+//     
 	// initialize I/O
-  
+	printf("begin Init\n");
 
 	ENC28J60_CONTROL_CS_PORT.DIR |= 1<<ENC28J60_CONTROL_CS;
 	CSPASSIVE;
@@ -251,21 +272,26 @@ void enc28j60Init(uip_eth_addr* macaddr)
   //SPIPORT.CTRL = SPI_ENABLE_bm | SPI_MASTER_bm;
   //      SPSR |= (1<<SPI2X);
         
-
+  printf("do reset\n");
   
   // perform system reset
   enc28j60Reset();
+  
 
   enc28j60SetBank(ECON1);
   //change LED settings
   //enc28j60PhyWrite(PHLCON, 0b0000110110100000);
 
+  //flash both
+//   enc28j60PhyWrite(PHLCON, 0b0000101010100010);
+  
   //red for rx, green for tx, min stretching
   enc28j60PhyWrite(PHLCON, 0b0000000100100010);
+  
   //green for tx, red for link/rx, min stretching
   //enc28j60PhyWrite(PHLCON, 0b0000000111000010);
 	// check CLKRDY bit to see if reset is complete
-        // The CLKRDY does not work. See Rev. B4 Silicon Errata point. Just wait.
+  // The CLKRDY does not work. See Rev. B4 Silicon Errata point. Just wait.
 	//while(!(enc28j60Read(ESTAT) & ESTAT_CLKRDY));
 	// do bank 0 stuff
 	// initialize receive buffer
@@ -315,6 +341,10 @@ void enc28j60Init(uip_eth_addr* macaddr)
 	// do bank 2 stuff
 	// enable MAC receive
 	enc28j60Write(MACON1, MACON1_MARXEN|MACON1_TXPAUS|MACON1_RXPAUS);
+  if (enc28j60Read(MACON1) != (MACON1_MARXEN|MACON1_TXPAUS|MACON1_RXPAUS)) {
+    PRINTF("not working!");
+
+  }
 	// bring MAC out of reset
 	enc28j60Write(MACON2, 0x00);
 	// enable automatic padding to 60bytes and CRC operations
@@ -358,8 +388,8 @@ uint8_t enc28j60getrev(void)
 
 void enc28j60PacketSend(uint16_t len, uint8_t* packet)
 {
-//   printf("sending from card - if this doesn't hit the network, we have an error here.\n");
-    //printf("card send\n");
+   //printf("sending from card - if this doesn't hit the network, we have an error here.\n");
+    printf("Es\n");
 //   uint16_t b;
 //   for (b = 0; b<len; b++) {
 //     printf("%0X ", packet[b]);
@@ -484,6 +514,8 @@ void enc28j60TXPacketFinalize()
 
 //end scott added
 
+uint8_t spindex = 0;
+static char spinner[] =  {'|','/','-','\\'};
 
 // Gets a packet from the network receive buffer, if one is available.
 // The packet will by headed by an ethernet header.
@@ -498,9 +530,15 @@ uint16_t enc28j60PacketReceive(uint16_t maxlen, uint8_t* packet)
 	//if( !(enc28j60Read(EIR) & EIR_PKTIF) ){
         // The above does not work. See Rev. B4 Silicon Errata point 6.
   uint8_t wait = enc28j60Read(EPKTCNT);
+  
 	if( wait ==0 ){
+      return(0);
+    spindex = (spindex + 1) %sizeof(spinner);
+    printf("%c", spinner[spindex]);
+    rs232_send (RS232_USARTE0, '\r');
 		return(0);
-        }
+  }
+
   if (wait>0){
     printf(" %d pkt wait\n", wait );
     if( (enc28j60Read(EIR) & (EIR_RXERIF)) ){
