@@ -36,6 +36,57 @@ void adc_init(void) {
 
 }
 
+/* run the ADC on the given channel (blocking) */
+uint16_t adc_sample_channel(uint8_t chan) {
+    uint16_t ret;
+    
+    ADCA.REFCTRL = (ADC_BANDGAP_bm | ADC_TEMPREF_bm | ADC_REFSEL_VCC_gc); //enable the bandgap as a reference
+    ADCA.CTRLB &= ~ADC_CONMODE_bm;
+    ADCA.CH0.CTRL = ADC_CH_INPUTMODE_SINGLEENDED_gc ; //Single ended external
+    
+    ADCA.CH0.MUXCTRL = chan << 3; //set positive channel 
+    ADCA.CH0.CTRL |= ADC_CH_START_bm; //start ch0 conversion
+    
+    while (!(ADCA.CH0.INTFLAGS & ADC_CH_CHIF_bm)); //wait for conversion complete
+    ret = ADCA.CH0.RES; //get result
+    ADCA.CH0.INTFLAGS = ADC_CH_CHIF_bm; //reset flag bit for next time
+    
+    return ret;
+}
+
+
+
+
+/* run the ADC in differential mode on fixed channels (blocking) */
+int16_t adc_sample_differential(uint8_t mode) {
+    int16_t ret;
+    
+    
+    if(mode == 0)
+        ADCA.REFCTRL = (ADC_BANDGAP_bm | ADC_REFSEL_INT1V_gc); //enable the bandgap as a reference    
+        else if (mode == 1)
+            ADCA.REFCTRL = (ADC_BANDGAP_bm | ADC_REFSEL_VCC_gc); 
+        
+        ADCA.CTRLB |= ADC_CONMODE_bm;
+    //     ADCA.CH1.CTRL = ADC_CH_INPUTMODE_DIFF_gc ;
+        ADCA.CH1.CTRL = ADC_CH_INPUTMODE_DIFFWGAIN_gc ; //1x gain
+        
+        ADCA.CH1.MUXCTRL = 0;
+        ADCA.CH1.MUXCTRL |=  6 << 3; //set positive channel
+        ADCA.CH1.MUXCTRL |=  3; //set negative channel to 7
+        
+        
+        ADCA.CH1.CTRL |= ADC_CH_START_bm; //start ch0 conversion
+        
+        while (!(ADCA.CH1.INTFLAGS & ADC_CH_CHIF_bm)); //wait for conversion complete
+    ret = ADCA.CH1.RES; //get result
+    ADCA.CH1.INTFLAGS = ADC_CH_CHIF_bm; //reset flag bit for next time
+    
+    return ret;
+    
+}
+
+
 /* run the ADC on the internal temperature sensor (blocking) */
 uint16_t adc_sample_temperature(void) {
     uint16_t ret;
