@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, Swedish Institute of Computer Science.
+ * Copyright (c) 2010, Swedish Institute of Computer Science.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,48 +26,41 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * This file is part of the Configurable Sensor Network Application
- * Architecture for sensor nodes running the Contiki operating system.
+ * This file is part of the Contiki operating system.
  *
- * This is a dummy non-functional dummy implementation.
+ * $Id: uip-debug.h,v 1.1 2010/04/30 13:20:57 joxe Exp $
+ */
+/**
+ * \file
+ *         A set of debugging macros.
  *
- * $Id: leds-arch.c,v 1.1 2006/12/22 17:05:31 barner Exp $
- *
- * -----------------------------------------------------------------
- *
- * Author  : Adam Dunkels, Joakim Eriksson, Niclas Finne, Simon Barner
- * Created : 2005-11-03
- * Updated : $Date: 2006/12/22 17:05:31 $
- *           $Revision: 1.1 $
+ * \author Nicolas Tsiftes <nvt@sics.se>
+ *         Niclas Finne <nfi@sics.se>
+ *         Joakim Eriksson <joakime@sics.se>
  */
 
-#include "contiki-conf.h"
-#include "dev/leds.h"
+#ifndef UIP_DEBUG_H
+#define UIP_DEBUG_H
 
-void
-leds_arch_init(void)
-{
-#if defined(__USE_LEDS__)
-	LEDPORT.DIR |= LEDS_CONF_ALL;
-	LEDPORT.OUT |= LEDS_CONF_ALL;
-#endif /* __USE_LEDS__ */
-}
+#define DEBUG_NONE      0
+#define DEBUG_PRINT     1
+#define DEBUG_ANNOTATE  2
+#define DEBUG_FULL      DEBUG_ANNOTATE | DEBUG_PRINT
+//#define DEBUG_NONE      DEBUG_FULL
 
-unsigned char
-leds_arch_get(void)
-{
-	unsigned char leds = 0;
-#if defined(__USE_LEDS__)
-	leds = ~LEDPORT.OUT & LEDS_CONF_ALL;
-#endif/* __USE_LEDS__ */
-	return leds;
-}
 
-void
-leds_arch_set(unsigned char leds)
-{
-#if defined(__USE_LEDS__)
-	leds = ~leds & LEDS_CONF_ALL;
-	LEDPORT.OUT = (LEDPORT.OUT & ~LEDS_CONF_ALL) | leds;
-#endif /* __USE_LEDS__ */
-}
+#if (DEBUG) & DEBUG_ANNOTATE
+#include <stdio.h>
+#define ANNOTATE(...) printf(__VA_ARGS__)
+#else
+#define ANNOTATE(...)
+#endif /* (DEBUG) & DEBUG_ANNOTATE */
+
+#if (DEBUG) & DEBUG_PRINT
+#include <stdio.h>
+#define PRINTF(...) printf(__VA_ARGS__)
+#else
+#define PRINTF(...)
+#endif /* (DEBUG) & DEBUG_PRINT */
+
+#endif

@@ -104,31 +104,32 @@ ISR(AVR_OUTPUT_COMPARE_INT)
 }
 
 /*---------------------------------------------------------------------------*/
-#ifdef __AVR_ATxmega256A3__  
-#ifdef __SYSTEM_CLOCK_SETUP__
-/* Setup whole system clock. 
- * ATxmega has a multistage clock system, 
- * to obtain a 125 tick/sec rate we setup no 
- * prescaler on system clock, but only in timer/counter0
- */
-void 
-system_clock_init()
-{
-	cli();
-	CLOCKSetup();
-	CLOCKLock();
-	sei();
-}
-#endif
-#endif /* __AVR_ATxmega256A3 && __SYSTEM_CLOCK_SETUP__*/
-
 void
 clock_init(void)
 {
-  cli ();
-  OCRSetup();
-//scount = count = 0;
-  sei ();
+	cli();
+#ifdef __XMEGA__
+#ifndef XMEGA_OSC_SOURCE
+#define XMEGA_OSC_SOURCE OSC_RC2MEN_bm
+#endif
+#ifndef XMEGA_CLOCK_SOURCE
+#define XMEGA_CLOCK_SOURCE CLK_SCLKSEL_RC2M_gc
+#endif
+	if ((CLK.LOCK & CLK_LOCK_bm) == 0) {
+		/* Clock is not setup, setup now. */
+		if (XMEGA_OSC_SOURCE) {
+			/* Enable an oscillator. */
+			OSC.CTRL |= XMEGA_OSC_SOURCE;
+			while (!(OSC.STATUS & XMEGA_OSC_SOURCE));
+		}
+		CCP = CCP_IOREG_gc;
+		CLK.CTRL = XMEGA_CLOCK_SOURCE;
+		CCP = CCP_IOREG_gc;
+		CLK.LOCK |= CLK_LOCK_bm;
+	}
+#endif
+	OCRSetup();
+	sei();
 }
 
 /*---------------------------------------------------------------------------*/

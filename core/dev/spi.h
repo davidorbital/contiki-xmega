@@ -35,6 +35,7 @@
  * \author
  *         Joakim Eriksson <joakime@sics.se>
  *         Niclas Finne <nfi@sics.se>
+ *         Timothy Rule <trule.github@nym.hush.com>
  */
 
 #ifndef __SPI_H__
@@ -87,6 +88,18 @@ void spi_init(void);
   do {              \
     SPI_RXBUF;      \
   } while(0);
+
+
+/*
+ * SPI Multi Slave API
+ */
+int spi_init_multi(void *desc, uint8_t count);
+int8_t spi_open(void *desc);
+void spi_close(int8_t fd);
+int spi_lock(int8_t fd);
+void spi_unlock(int8_t fd);
+void spi_write(int8_t fd, uint8_t *data, int size);
+void spi_read(int8_t fd, uint8_t *data, int size);
 
 
 #endif /* __SPI_H__ */

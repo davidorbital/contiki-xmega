@@ -12,3 +12,5 @@ doc/html
 patches-*
 tools/tunslip6
 *~
+.project
+projects/

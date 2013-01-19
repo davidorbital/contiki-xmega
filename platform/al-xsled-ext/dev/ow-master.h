@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2005, Swedish Institute of Computer Science.
+/**
+ * Copyright (c) 2012, Timothy Rule <trule.github@nym.hush.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,49 +25,30 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * This file is part of the Configurable Sensor Network Application
- * Architecture for sensor nodes running the Contiki operating system.
- *
- * This is a dummy non-functional dummy implementation.
- *
- * $Id: leds-arch.c,v 1.1 2006/12/22 17:05:31 barner Exp $
- *
- * -----------------------------------------------------------------
- *
- * Author  : Adam Dunkels, Joakim Eriksson, Niclas Finne, Simon Barner
- * Created : 2005-11-03
- * Updated : $Date: 2006/12/22 17:05:31 $
- *           $Revision: 1.1 $
  */
 
-#include "contiki-conf.h"
-#include "dev/leds.h"
+/**
+ * @file
+ * 		XMEGA Soft 1 Wire Master.
+ * @author
+ * 		Timothy Rule <trule.github@nym.hush.com>
+ */
 
-void
-leds_arch_init(void)
-{
-#if defined(__USE_LEDS__)
-	LEDPORT.DIR |= LEDS_CONF_ALL;
-	LEDPORT.OUT |= LEDS_CONF_ALL;
-#endif /* __USE_LEDS__ */
-}
+#ifndef __OW_XMEGA_MASTER_H__
+#define __OW_XMEGA_MASTER_H__
 
-unsigned char
-leds_arch_get(void)
-{
-	unsigned char leds = 0;
-#if defined(__USE_LEDS__)
-	leds = ~LEDPORT.OUT & LEDS_CONF_ALL;
-#endif/* __USE_LEDS__ */
-	return leds;
-}
+#include <stdint.h>
+#include <avr/io.h>
 
-void
-leds_arch_set(unsigned char leds)
-{
-#if defined(__USE_LEDS__)
-	leds = ~leds & LEDS_CONF_ALL;
-	LEDPORT.OUT = (LEDPORT.OUT & ~LEDS_CONF_ALL) | leds;
-#endif /* __USE_LEDS__ */
-}
+
+typedef struct {
+	volatile PORT_t *port;
+	uint8_t pin_bm;
+} ow_xmega_master_t;
+
+int ow_init(ow_xmega_master_t *master);
+int ow_transaction(ow_xmega_master_t *master, uint8_t* write, uint8_t write_len,
+		uint8_t* read, uint8_t read_len);
+void ow_wait_on_read(ow_xmega_master_t *master, uint8_t value);
+
+#endif /* __OW_XMEGA_MASTER_H__ */

@@ -37,6 +37,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h.>
 
 #include "contiki.h"
 
@@ -711,6 +712,7 @@ rf230_init(void)
  /* Leave radio in on state (?)*/
   on();
 
+	printf("rf230bb initialized\n");
   return 1;
 }
 /*---------------------------------------------------------------------------*/
@@ -874,7 +876,9 @@ rf230_transmit(unsigned short payload_len)
  /* Get the transmission result */  
 #if RF230_CONF_AUTORETRIES
   tx_result = hal_subregister_read(SR_TRAC_STATUS);
+	printf("Autoretry %d\n", tx_result);
 #else
+	printf("No autoretry\n");
   tx_result=0;
 #endif
 

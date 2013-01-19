@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, Swedish Institute of Computer Science.
+ * Copyright (c) 2010, Swedish Institute of Computer Science
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,49 +25,56 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * This file is part of the Configurable Sensor Network Application
- * Architecture for sensor nodes running the Contiki operating system.
- *
- * This is a dummy non-functional dummy implementation.
- *
- * $Id: leds-arch.c,v 1.1 2006/12/22 17:05:31 barner Exp $
- *
- * -----------------------------------------------------------------
- *
- * Author  : Adam Dunkels, Joakim Eriksson, Niclas Finne, Simon Barner
- * Created : 2005-11-03
- * Updated : $Date: 2006/12/22 17:05:31 $
- *           $Revision: 1.1 $
  */
 
-#include "contiki-conf.h"
-#include "dev/leds.h"
+/**
+ * \file
+ *	Declarations for the result acquisition API.
+ * \author
+ * 	Nicolas Tsiftes <nvt@sics.se>
+ */
 
-void
-leds_arch_init(void)
-{
-#if defined(__USE_LEDS__)
-	LEDPORT.DIR |= LEDS_CONF_ALL;
-	LEDPORT.OUT |= LEDS_CONF_ALL;
-#endif /* __USE_LEDS__ */
-}
+#ifndef RESULT_H
+#define RESULT_H
 
-unsigned char
-leds_arch_get(void)
-{
-	unsigned char leds = 0;
-#if defined(__USE_LEDS__)
-	leds = ~LEDPORT.OUT & LEDS_CONF_ALL;
-#endif/* __USE_LEDS__ */
-	return leds;
-}
+#include "index.h"
+#include "relation.h"
+#include "storage.h"
 
-void
-leds_arch_set(unsigned char leds)
-{
-#if defined(__USE_LEDS__)
-	leds = ~leds & LEDS_CONF_ALL;
-	LEDPORT.OUT = (LEDPORT.OUT & ~LEDS_CONF_ALL) | leds;
-#endif /* __USE_LEDS__ */
-}
+#define RESULT_TUPLE_INVALID(tuple)	((tuple) == NULL)
+#define RESULT_TUPLE_SIZE(handle)	(handle).rel->row_length
+
+typedef unsigned char *tuple_t;
+
+#define DB_HANDLE_FLAG_INDEX_STEP	0x01
+#define DB_HANDLE_FLAG_SEARCH_INDEX	0x02
+#define DB_HANDLE_FLAG_PROCESSING	0x04
+
+struct db_handle {
+  index_iterator_t index_iterator;
+  tuple_id_t tuple_id;
+  tuple_id_t current_row;
+  relation_t *rel;
+  relation_t *left_rel;
+  relation_t *join_rel;
+  relation_t *right_rel;
+  relation_t *result_rel;
+  attribute_t *left_join_attr;
+  attribute_t *right_join_attr;
+  tuple_t tuple;
+  uint8_t flags;
+  uint8_t ncolumns;
+  void *adt;
+};
+typedef struct db_handle db_handle_t;
+
+db_result_t db_get_value(attribute_value_t *value,
+                         db_handle_t *handle, unsigned col);
+db_result_t db_phy_to_value(attribute_value_t *value,
+                            attribute_t *attr, unsigned char *ptr);
+db_result_t db_value_to_phy(unsigned char *ptr,
+                            attribute_t *attr, attribute_value_t *value);
+long db_value_to_long(attribute_value_t *value);
+db_result_t db_free(db_handle_t *handle);
+
+#endif /* !RESULT_H */

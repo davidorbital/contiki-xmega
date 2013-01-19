@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, Swedish Institute of Computer Science.
+ * Copyright (c) 2012, Timothy Rule <trule.github@nym.hush.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,49 +25,24 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * This file is part of the Configurable Sensor Network Application
- * Architecture for sensor nodes running the Contiki operating system.
- *
- * This is a dummy non-functional dummy implementation.
- *
- * $Id: leds-arch.c,v 1.1 2006/12/22 17:05:31 barner Exp $
- *
- * -----------------------------------------------------------------
- *
- * Author  : Adam Dunkels, Joakim Eriksson, Niclas Finne, Simon Barner
- * Created : 2005-11-03
- * Updated : $Date: 2006/12/22 17:05:31 $
- *           $Revision: 1.1 $
  */
 
-#include "contiki-conf.h"
-#include "dev/leds.h"
+#ifndef __SPI_XMEGA_H__
+#define __SPI_XMEGA_H__
 
-void
-leds_arch_init(void)
-{
-#if defined(__USE_LEDS__)
-	LEDPORT.DIR |= LEDS_CONF_ALL;
-	LEDPORT.OUT |= LEDS_CONF_ALL;
-#endif /* __USE_LEDS__ */
-}
+#include <stdint.h>
+#include <avr/io.h>
+#include <spi.h>
 
-unsigned char
-leds_arch_get(void)
-{
-	unsigned char leds = 0;
-#if defined(__USE_LEDS__)
-	leds = ~LEDPORT.OUT & LEDS_CONF_ALL;
-#endif/* __USE_LEDS__ */
-	return leds;
-}
+typedef struct {
+	volatile PORT_t *port;
+	volatile uint8_t *data;
+	volatile uint8_t *ctrl;
+	volatile uint8_t *status;
+	volatile PORT_t *ss_port;
+	uint8_t ss_bm;
+	uint8_t ctrl_bm;
+	uint8_t state;
+} spi_xmega_slave_t;
 
-void
-leds_arch_set(unsigned char leds)
-{
-#if defined(__USE_LEDS__)
-	leds = ~leds & LEDS_CONF_ALL;
-	LEDPORT.OUT = (LEDPORT.OUT & ~LEDS_CONF_ALL) | leds;
-#endif /* __USE_LEDS__ */
-}
+#endif /* __SPI_XMEGA_H__ */

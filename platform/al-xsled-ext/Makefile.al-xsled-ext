@@ -1,0 +1,33 @@
+#
+# Copyright (c) 2012, Timothy Rule.
+# All rights reserved.
+#
+# Make file for AL-XSLED_EXT Development Board with ATXmega256a3 and Micro-SD.
+#
+
+CONTIKI_TARGET_DIRS = . apps dev ../../apps
+CONTIKI_CORE=contiki-main
+CONTIKI_TARGET_MAIN = ${CONTIKI_CORE}.o
+CONTIKI_TARGET_SOURCEFILES += contiki-main.c hello-world.c
+#ifdef SENSOR_APP
+CONTIKI_TARGET_SOURCEFILES += sensor-app.c
+#endif
+#ifdef ALARM_APP
+CONTIKI_TARGET_SOURCEFILES += alarm-app.c
+#endif
+CONTIKI_TARGET_SOURCEFILES += cfs-coffee.c cfs-coffee-arch.c
+CONTIKI_TARGET_SOURCEFILES += twi-master.c ow-master.c
+CONTIKI_TARGET_SOURCEFILES += xmega-sensor.c sht21-sensor.c ds3231-sensor.c
+CONTIKI_TARGET_SOURCEFILES += ds1820-sensor.c
+CLEAN += symbols.c symbols.h al-xs-app.hex
+
+CONTIKIAVR=$(CONTIKI)/cpu/avr
+CONTIKIBOARD=.
+CONTIKI_PLAT_DEFS = -DF_CPU=32000000UL -DAUTO_CRC_PADDING=2 -DAUTOSTART_ENABLE
+MCU=atxmega256a3
+
+AVRDUDE_PROGRAMMER=avrispmkII
+AVRDUDE_PORT=usb
+AVRDUDE_OPTIONS=-V
+
+include $(CONTIKIAVR)/Makefile.avrxmega

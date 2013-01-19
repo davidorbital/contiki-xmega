@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, Swedish Institute of Computer Science.
+ * Copyright (c) 2009, Swedish Institute of Computer Science
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,48 +26,59 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * This file is part of the Configurable Sensor Network Application
- * Architecture for sensor nodes running the Contiki operating system.
+ * This file is part of the Contiki operating system.
  *
- * This is a dummy non-functional dummy implementation.
- *
- * $Id: leds-arch.c,v 1.1 2006/12/22 17:05:31 barner Exp $
- *
- * -----------------------------------------------------------------
- *
- * Author  : Adam Dunkels, Joakim Eriksson, Niclas Finne, Simon Barner
- * Created : 2005-11-03
- * Updated : $Date: 2006/12/22 17:05:31 $
- *           $Revision: 1.1 $
  */
 
-#include "contiki-conf.h"
-#include "dev/leds.h"
+/**
+ * \file
+ *	SD driver interface.
+ * \author
+ * 	Nicolas Tsiftes <nvt@sics.se>
+ * 	Timothy Rule <trule.github@nym.hush.com>
+ */
 
-void
-leds_arch_init(void)
-{
-#if defined(__USE_LEDS__)
-	LEDPORT.DIR |= LEDS_CONF_ALL;
-	LEDPORT.OUT |= LEDS_CONF_ALL;
-#endif /* __USE_LEDS__ */
-}
+#ifndef SD_H
+#define SD_H
 
-unsigned char
-leds_arch_get(void)
-{
-	unsigned char leds = 0;
-#if defined(__USE_LEDS__)
-	leds = ~LEDPORT.OUT & LEDS_CONF_ALL;
-#endif/* __USE_LEDS__ */
-	return leds;
-}
+#include "sd-arch.h"
 
-void
-leds_arch_set(unsigned char leds)
-{
-#if defined(__USE_LEDS__)
-	leds = ~leds & LEDS_CONF_ALL;
-	LEDPORT.OUT = (LEDPORT.OUT & ~LEDS_CONF_ALL) | leds;
-#endif /* __USE_LEDS__ */
-}
+#define SD_DEFAULT_BLOCK_SIZE			512
+#define SD_REGISTER_SIZE				16
+
+/* API return codes. */
+#define SD_OK					 		0
+
+#define SD_INIT_ERROR_NO_CARD			-1
+#define SD_INIT_ERROR_ARCH				-2
+#define SD_INIT_ERROR_NO_IF_COND		-3
+#define SD_INIT_ERROR_NO_BLOCK_SIZE    	-4
+#define SD_INIT_ERROR_NO_IDLE	    	-5
+#define SD_INIT_ERROR_NO_OCR	    	-6
+#define SD_INIT_ERROR_NO_OP_IDLE	    -7
+
+
+#define SD_WRITE_ERROR_NO_CMD_RESPONSE		-20
+#define SD_WRITE_ERROR_NO_BLOCK_RESPONSE	-21
+#define SD_WRITE_ERROR_PROGRAMMING		-22
+#define SD_WRITE_ERROR_TOKEN			-23
+#define SD_WRITE_ERROR_NO_TOKEN			-24
+
+#define SD_READ_ERROR_NO_CMD_RESPONSE	-40
+#define SD_READ_ERROR_INVALID_SIZE		-41
+#define SD_READ_ERROR_TOKEN				-42
+#define SD_READ_ERROR_NO_TOKEN			-43
+
+
+/* Type definition. */
+typedef uint32_t sd_offset_t;
+
+/* API */
+int sd_initialize(void *desc);
+int sd_write(sd_offset_t, unsigned char *, unsigned);
+int sd_read(sd_offset_t, unsigned char *, unsigned);
+int sd_write_block(sd_offset_t, unsigned char *);
+int sd_read_block(sd_offset_t, unsigned char *);
+sd_offset_t sd_get_capacity(void);
+
+#endif /* !SD_H */

@@ -83,7 +83,6 @@
 #define RS232_USARTE0 4
 
 #define RS232_COUNT 5
-#define RS232_PORT_0 RS232_USARTE0
 
 #elif defined (__AVR_ATxmega256A3__)
 
@@ -106,12 +105,29 @@
 #define RS232_USARTF1 7
 
 #define RS232_COUNT 8
-/*XXX This is platform specific*/
-//#define RS232_PORT_0 RS232_USARTD0
 
+#else
+#error "Please add RS232 port definitions for Xmega variant."
 #endif
 
-#define XMEGA_USART_CALC(bd) (F_CPU / (8UL * bd)) - 1
+/*
+ * RS232_PORT_0 is platform specific. Either define it in platform code OR use
+ * a call to rs232_redirect_stdout() in early platform init code. For platforms
+ * using the latter approach, set a value to satisfy rs232.c.
+ */
+#ifndef RS232_PORT_0
+#define RS232_PORT_0 RS232_USARTC0
+#endif
+
+/*
+ * XMEGA baud rates. The lower byte goes to BAUDL(BAUDCTRLA) and the higher
+ * byte goes to BAUDH(BAUDCTRLB).
+ */
+#define XMEGA_BAUD_ASYNC_9600			0x000C
+#define XMEGA_BAUD_ASYNC_115200			0xA005
+#define XMEGA_BAUD_ASYNC_115200_2M		XMEGA_BAUD_ASYNC_115200
+#define XMEGA_BAUD_ASYNC_115200_32M		0xA417
+
 
 /******************************************************************************/
 /***   Interrupt settings                                                     */
@@ -124,7 +140,7 @@
 /***   Receiver / transmitter                                                 */
 /******************************************************************************/
 #define USART_RECEIVER_ENABLE USART_RXEN_bm
-#define USART_TRANSMITTER_ENABLE (USART_TXEN_bm | USART_CLK2X_bm)
+#define USART_TRANSMITTER_ENABLE USART_TXEN_bm
 
 /******************************************************************************/
 /***   Mode select                                                            */

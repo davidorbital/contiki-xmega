@@ -43,12 +43,20 @@
 #ifndef __CONTIKI_CONF_H__
 #define __CONTIKI_CONF_H__
 
+#include <stdint.h>
+#include <avrdef.h>
+
+
 /* MCU and clock rate */
 #define MCU_MHZ 12.5
 #define PLATFORM PLATFORM_AVR
 
 /* Clock ticks per second */
 #define CLOCK_CONF_SECOND 100
+
+/* Clock setup */
+#define XMEGA_TIMER_TOP 256
+#define XMEGA_TIMER_PRE TC_CLKSEL_DIV1024_gc
 
 /* Maximum time interval (used for timers) */
 #define INFINITE_TIME 0xffff
@@ -91,20 +99,5 @@
 #define UIP_CONF_TCP             1
 #define UIP_CONF_TCP_SPLIT       1
 
-
-#include <stdint.h>
-
-typedef int32_t s32_t;
-typedef unsigned short clock_time_t;
-typedef unsigned char u8_t;
-typedef unsigned short u16_t;
-typedef unsigned long u32_t;
-typedef unsigned short uip_stats_t;
-typedef unsigned long off_t;
-
-void clock_delay(unsigned int us2);
-void clock_wait(int ms10);
-void clock_set_seconds(unsigned long s);
-unsigned long clock_seconds(void);
 
 #endif /* __CONTIKI_CONF_H__ */

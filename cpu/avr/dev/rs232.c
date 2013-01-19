@@ -335,72 +335,84 @@ ISR(USARTC1_RXC_vect) { usart_generic_rx_vect(RS232_USARTC1); }
 #endif
 
 /*---------------------------------------------------------------------------*/
+
+#if defined (__RS232_ATXMEGA__)
+void
+rs232_init(uint8_t port, uint16_t bd, uint8_t ffmt)
+{
+	PORT_t *USART_port;
+	rs232_t *rs232 = &rs232_ports[port];
+
+	/* Disable interrupts. */
+	cli();
+
+	/* 
+	 * There are 2 USART's per physical port. So first we need to find the
+	 * right port (div 2) and then enable the TX & RX on the correct
+	 * nibble of that port (MOD 2).
+	 */
+	USART_port = (PORT_t *)(BASE_USART_PORT + (USART_PORT_OFFSET * (port / 2)));
+	USART_port->OUT |= (port % 2) ? USARTn1_TXD_bm : USARTn0_TXD_bm;
+	USART_port->DIR |= (port % 2) ? USARTn1_TXD_bm : USARTn0_TXD_bm;
+	USART_port->DIRCLR = (port % 2) ? USARTn1_RXD_bm : USARTn0_RXD_bm;
+
+	/* Baudrate registers. */
+	*rs232->BAUDL = (uint8_t)bd;
+	*rs232->BAUDH = (uint8_t)(bd >> 8);
+
+	/* Control registers, set function last (¤21.5 XMEGA A Manual). */
+	*rs232->INTERRUPT = USART_INTERRUPT_RX_COMPLETE | USART_INTERRUPT_TX_COMPLETE;
+	*rs232->FORMAT = ffmt;
+	*rs232->FUNCTION = USART_RECEIVER_ENABLE | USART_TRANSMITTER_ENABLE;
+
+	/* Interrupt support init. */
+	rs232->txwait = 0;
+	rs232->input_handler = NULL;
+
+	/* Enable interrupts. */
+	sei();
+}
+#else /*__RS232_ATXMEGA__*/
 void
 rs232_init (uint8_t port, uint16_t bd, uint8_t ffmt)
 {
 	rs232_t *rs232 = &rs232_ports[port];
 
-#if defined (__RS232_ATXMEGA__)
-	/* 
-	 * we need same index for even and odd 
-	 * port numbers, so we clear the LSB.
-	 * This number must then be divide by 2 to get the distance
-	 * (in USART_PORT_OFFSET) from first USART
-	 * port (BASE_USART_PORT)
-	 */
-	uint8_t port_index = ((port&0xfe)/2);
-	PORT_t *USART_port = (PORT_t *) (BASE_USART_PORT + 
-			(USART_PORT_OFFSET*port_index));
-	/*
-	 * We need to set TX pin as output, and set it 
-	 * high before setting direction.
-	 * Rx pin is input
-	 */
-	if (port&0x01){
-		USART_port->OUT |= USARTn1_TXD_bm;
-		USART_port->DIR |= USARTn1_TXD_bm;
-		USART_port->DIRCLR = USARTn1_RXD_bm;
-	}else{
-		USART_port->OUT |= USARTn0_TXD_bm;
-		USART_port->DIR |= USARTn0_TXD_bm;
-		USART_port->DIRCLR = USARTn0_RXD_bm;
-	}
-#endif /*__AVR_ATxmega256A3__*/
-
 	/*
 	 * Setup baudrate
 	 */
 	(*(*rs232).BAUDH) &= 0xff00;/*clear 4 LSB*/
-  (*(*rs232).BAUDH) |= (uint8_t)(0x00ff & (bd>>8));
-  (*(*rs232).BAUDL) = (uint8_t)bd;
+	(*(*rs232).BAUDH) |= (uint8_t)(0x00ff & (bd>>8));
+	(*(*rs232).BAUDL) = (uint8_t)bd;
 
-  /*
-   * - Enable receiver and transmitter
+	/*
+	 * - Enable receiver and transmitter
 	 */
 	(*(*rs232).FUNCTION) |= 
-					USART_RECEIVER_ENABLE |
-					USART_TRANSMITTER_ENABLE;
+			USART_RECEIVER_ENABLE |
+			USART_TRANSMITTER_ENABLE;
 
-  /* - Enable interrupts for receiver and transmitter
+	/* - Enable interrupts for receiver and transmitter
 	 *   ( medium priority interrupts for xmega)
-   */
+	 */
 	(*(*rs232).INTERRUPT) |= 
-	 				USART_INTERRUPT_RX_COMPLETE |
-					USART_INTERRUPT_TX_COMPLETE;
+			USART_INTERRUPT_RX_COMPLETE |
+			USART_INTERRUPT_TX_COMPLETE;
 
-  /*
-   * - mode (sync. / async)
-   * - Parity
-   * - Stop bits
-   * - charater size (9 bits are currently not supported)
-   * - clock polarity
-  */
+	/*
+	 * - mode (sync. / async)
+	 * - Parity
+	 * - Stop bits
+	 * - charater size (9 bits are currently not supported)
+	 * - clock polarity
+	 */
 	(*(*rs232).FORMAT) = ffmt;
 
 	/*setup flag and input handler*/
-  (*rs232).txwait = 0;
-  (*rs232).input_handler = NULL;
+	(*rs232).txwait = 0;
+	(*rs232).input_handler = NULL;
 }
+#endif /*__RS232_ATXMEGA__*/
 
 void
 rs232_print_p(uint8_t port, const char *buf)

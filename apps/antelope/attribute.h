@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, Swedish Institute of Computer Science.
+ * Copyright (c) 2010, Swedish Institute of Computer Science
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,49 +25,65 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * This file is part of the Configurable Sensor Network Application
- * Architecture for sensor nodes running the Contiki operating system.
- *
- * This is a dummy non-functional dummy implementation.
- *
- * $Id: leds-arch.c,v 1.1 2006/12/22 17:05:31 barner Exp $
- *
- * -----------------------------------------------------------------
- *
- * Author  : Adam Dunkels, Joakim Eriksson, Niclas Finne, Simon Barner
- * Created : 2005-11-03
- * Updated : $Date: 2006/12/22 17:05:31 $
- *           $Revision: 1.1 $
  */
 
-#include "contiki-conf.h"
-#include "dev/leds.h"
+/**
+ * \file
+ *	Definitions for attributes.
+ * \author
+ * 	Nicolas Tsiftes <nvt@sics.se>
+ */
 
-void
-leds_arch_init(void)
-{
-#if defined(__USE_LEDS__)
-	LEDPORT.DIR |= LEDS_CONF_ALL;
-	LEDPORT.OUT |= LEDS_CONF_ALL;
-#endif /* __USE_LEDS__ */
-}
+#ifndef ATTRIBUTE_H
+#define ATTRIBUTE_H
 
-unsigned char
-leds_arch_get(void)
-{
-	unsigned char leds = 0;
-#if defined(__USE_LEDS__)
-	leds = ~LEDPORT.OUT & LEDS_CONF_ALL;
-#endif/* __USE_LEDS__ */
-	return leds;
-}
+#include <stdint.h>
+#include <stdlib.h>
 
-void
-leds_arch_set(unsigned char leds)
-{
-#if defined(__USE_LEDS__)
-	leds = ~leds & LEDS_CONF_ALL;
-	LEDPORT.OUT = (LEDPORT.OUT & ~LEDS_CONF_ALL) | leds;
-#endif /* __USE_LEDS__ */
-}
+#include "lib/list.h"
+
+#include "db-options.h"
+
+typedef enum {
+  DOMAIN_UNSPECIFIED = 0,
+  DOMAIN_INT = 1,
+  DOMAIN_LONG = 2,
+  DOMAIN_STRING = 3,
+  DOMAIN_FLOAT = 4
+} domain_t;
+
+#define ATTRIBUTE_FLAG_NO_STORE		0x1
+#define ATTRIBUTE_FLAG_INVALID		0x2
+#define ATTRIBUTE_FLAG_PRIMARY_KEY	0x4
+#define ATTRIBUTE_FLAG_UNIQUE		0x8
+
+struct attribute {
+  struct attribute *next;
+  void *index;
+  long aggregation_value;
+  uint8_t aggregator;
+  uint8_t domain;
+  uint8_t element_size;
+  uint8_t flags;
+  char name[ATTRIBUTE_NAME_LENGTH + 1];
+};
+
+typedef struct attribute attribute_t;
+typedef uint8_t attribute_id_t;
+
+struct attribute_value {
+  union {
+    int int_value;
+    long long_value;
+    unsigned char *string_value;
+  } u;
+  domain_t domain;
+};
+
+typedef struct attribute_value attribute_value_t;
+
+#define VALUE_LONG(value)   (value)->u.long_value
+#define VALUE_INT(value)    (value)->u.int_value
+#define VALUE_STRING(value) (value)->u.string_value
+
+#endif /* ATTRIBUTES_H */

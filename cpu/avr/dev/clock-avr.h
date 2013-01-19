@@ -150,54 +150,23 @@
   TIMSK0 = _BV (OCIE0A);
 #endif /* AVR_CONF_USE32KCRYSTAL */
 
-/* all ATMEGAs should have TCC0 defined*/
-#elif  defined(TCC0)
-/*--- setup Timer/Counter 0 for system time ---*/
-/* use Timer/Counter 0 from timing*/
-#define TIMER TCC0
-/*interrupt vector*/
-#define AVR_OUTPUT_COMPARE_INT TCC0_OVF_vect 
-/* CLKsys is 32768000
- * prescaler is 1024 we want 125 ticks/sec
- * 
- * 32768000 = 1024 * 125 * 256
- */
-#define TOP 256
-/*set Prescaler to 1024. System CLK as refernce*/
-#define CLK_PRE_1024 0x07
-
-#define OCRSetup() \
- /*setup TOP value*/\
- TIMER.PERH = (uint8_t) (TOP>>8);\
- TIMER.PERL = (uint8_t) (TOP);\
- /*Set High Priority int. for TC0 overflow*/\
- TIMER.INTCTRLA = TC0_OVFINTLVL_gm;\
- /*set timer prescaler at 1024*/\
- TIMER.CTRLA = CLK_PRE_1024; 
+#elif defined(__XMEGA__)
+	/* Defaults give 125 * 64 * 250 = 2M, for the internal clock source. */
+	#ifndef XMEGA_TIMER_TOP
+	#define XMEGA_TIMER_TOP 250
+	#endif
+	#ifndef XMEGA_TIMER_PRE
+	#define XMEGA_TIMER_PRE TC_CLKSEL_DIV64_gc
+	#endif
+	#define AVR_OUTPUT_COMPARE_INT TCC0_OVF_vect
+	#define OCRSetup()									\
+		TCC0.PER = XMEGA_TIMER_TOP;						\
+		TCC0.INTCTRLA = TC0_OVFINTLVL_gm;				\
+		TCC0.CTRLA = XMEGA_TIMER_PRE;
 
 #else
-#error "Setup CPU in clock-avr.h"
+	#error "Setup CPU in clock-avr.h"
+
 #endif
 
-#if defined __SYSTEM_CLOCK_SETUP__
-#if defined(__EMB_ZRF212__)/*Main clock is platform specific*/
-/*pointer to Timer/Counter0*/
-#define MAIN_CLK  CLK
-/*signature for CCP register*/
-#define CCP_IOREG 0xD8
-/*Setup whole system clock (CLKcpu and CLKper)*/
-#define CLOCKSetup() \
-	/*external oscillator or clock*/ \
-	MAIN_CLK.CTRL |=  CLK_SCLKSEL0_bm |  CLK_SCLKSEL1_bm; 
-
-/* lock the clock settings until next restart*/
-#define CLOCKLock() \
-	CPU_CCP = 0xD8; \
-\
-	MAIN_CLK.LOCK | CLK_LOCK_bm; 
-#else /*define platform specific system clock startup here*/
-#error "define xmega platform here"
-#endif /*EMB-ZRF212*/
-
-#endif /*__SYSTEM_CLOCK_SETUP__)*/
 #endif //CONTIKI_CLOCK_AVR_H

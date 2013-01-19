@@ -45,10 +45,29 @@
  *
  * Setting WATCHDOG_CONF_TIMEOUT -1 will disable the WDT.
  */
-//#define WATCHDOG_CONF_TIMEOUT -1
+
+#include <contiki-conf.h>
+#include <avrdef.h>
+#include <avr/io.h>
+#include <avr/wdt.h>
+#include <avr/interrupt.h>
+#include <dev/watchdog.h>
 
 #ifndef WATCHDOG_CONF_TIMEOUT
-#define WATCHDOG_CONF_TIMEOUT WDTO_2S
+#ifdef __XMEGA__
+#define WATCHDOG_CONF_TIMEOUT WDT_PER_2KCLK_gc
+#else
+	#define WATCHDOG_CONF_TIMEOUT WDTO_2S
+#endif
+#endif
+
+#ifdef __XMEGA__
+#ifndef wdt_disable
+#define wdt_disable() \
+	uint8_t temp = (WDT.CTRL & ~WDT_ENABLE_bm) | WDT_CEN_bm; \
+	CCP = CCP_IOREG_gc; \
+	WDT.CTRL = temp
+#endif
 #endif
 
  /* While balancing start and stop calls is a good idea, an imbalance will cause
@@ -59,10 +78,6 @@
 #ifndef WATCHDOG_CONF_BALANCE
 #define WATCHDOG_CONF_BALANCE 0
 #endif
-
-#include "dev/watchdog.h"
-#include <avr/wdt.h>
-#include <avr/interrupt.h>
 
 #if WATCHDOG_CONF_BALANCE && WATCHDOG_CONF_TIMEOUT >= 0
 static int stopped = 0;
@@ -75,15 +90,12 @@ watchdog_init(void)
 /*  Clear startup bit and disable the wdt, whether or not it will be used.
     Random code may have caused the last reset.
  */
-#if defined(WDT_ENABLE_bm)
-	WDT.CTRL |= WDT_CEN_bm;
-	WDT.CTRL &= ~(WDT_ENABLE_bm);
+#ifdef __XMEGA__
+	RST.STATUS |= RST_WDRF_bm;
 #else
 	MCUSR&=~(1<<WDRF);
-  wdt_disable();
-#endif /* __AVR_ATxmega256A3__ */
-
-
+#endif
+	wdt_disable();
 #if WATCHDOG_CONF_BALANCE && WATCHDOG_CONF_TIMEOUT >= 0
 	stopped = 1;
 #endif
@@ -95,9 +107,13 @@ watchdog_start(void)
 #if WATCHDOG_CONF_TIMEOUT >= 0
 #if WATCHDOG_CONF_BALANCE
 	stopped--;
-	if(!stopped)
+	if (stopped)
+		return;
 #endif
-		wdt_enable(WATCHDOG_CONF_TIMEOUT);
+	wdt_enable(WATCHDOG_CONF_TIMEOUT);
+#ifdef __XMEGA__
+	while (WDT.STATUS & WDT_SYNCBUSY_bm);
+#endif
 #endif  
 }
 /*---------------------------------------------------------------------------*/
@@ -119,13 +135,7 @@ watchdog_stop(void)
 #if WATCHDOG_CONF_BALANCE
 	stopped++;
 #endif
-#if defined(WDT_ENABLE_bm)
-	WDT.CTRL |= WDT_CEN_bm;
-	WDT.CTRL &= ~(WDT_ENABLE_bm);
-#else
-  wdt_disable();
-#endif /* __AVR_ATxmega256A3__ */
-
+	wdt_disable();
 #endif
 }
 /*---------------------------------------------------------------------------*/
@@ -133,8 +143,8 @@ void
 watchdog_reboot(void)
 {
 	cli();
-	wdt_enable(WDTO_15MS); //wd on,250ms 
-	while(1); //loop
+	wdt_enable(0); /* 0 is the shortest time for all AVR CPU families. */
+	while(1);
 }
 /*---------------------------------------------------------------------------*/
 #if 0

@@ -64,6 +64,7 @@
 
 /*============================ INCLUDE =======================================*/
 #include <stdlib.h>
+#include <stdio.h> //for printf
 
 #include "hal.h"
 
@@ -88,6 +89,7 @@
  */
 static uint16_t hal_system_time = 0;
 volatile extern signed char rf230_last_rssi;
+extern int packet_count;
 
 //static uint8_t volatile hal_bat_low_flag;
 //static uint8_t volatile hal_pll_lock_flag;
@@ -225,6 +227,7 @@ hal_init(void)
 void
 hal_init(void)
 {
+	printf("hal init");
     /*Reset variables used in file.*/
     hal_system_time = 0;
 		//hal_reset_flags();
@@ -720,6 +723,7 @@ hal_frame_read(hal_rx_frame_t *rx_frame)
 void
 hal_frame_write(uint8_t *write_buffer, uint8_t length)
 {
+	printf("Hal_frame_write\n");
 #if defined(__AVR_ATmega128RFA1__)
     uint8_t *tx_buffer;
     tx_buffer=(uint8_t *)0x180;  //start of fifo in i/o space
@@ -757,9 +761,10 @@ hal_frame_write(uint8_t *write_buffer, uint8_t length)
 #if !RF230_CONF_CHECKSUM
     length -= 2;
 #endif
-    do HAL_SPI_TRANSFER(*write_buffer++); while (--length);
-
+    do HAL_SPI_TRANSFER(*write_buffer++);  while (--length);
     HAL_SPI_TRANSFER_CLOSE();
+
+		printf("HAL_SPI TRANSFER DONE\n");
 #endif /* defined(__AVR_ATmega128RFA1__) */
 }
 
@@ -964,6 +969,7 @@ HAL_RF230_ISR() //for reference, for now
 /* Separate RF230 has a single radio interrupt and the source must be read from the IRQ_STATUS register */
 HAL_RF230_ISR()
 {
+				leds_on(0x04);
     /*The following code reads the current system time. This is done by first
       reading the hal_system_time and then adding the 16 LSB directly from the
       hardware counter.
@@ -1015,6 +1021,8 @@ HAL_RF230_ISR()
         rf230_last_rssi = (rf230_last_rssi <<1)  + rf230_last_rssi;
 #else  // Faster with 1-clock multiply. Raven and Jackdaw have 2-clock multiply so same speed while saving 2 bytes of program memory
         rf230_last_rssi = 3 * hal_subregister_read(SR_RSSI);
+
+				packet_count++;
 #endif
 #endif
 //       if(rx_start_callback != NULL){
