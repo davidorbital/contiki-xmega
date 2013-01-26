@@ -68,6 +68,9 @@
 #include "lcd-test.h"
 #endif
 
+// magical value determined by sourcery and magic
+#define XMEGA_BAUD_ASYNC_EXTOSC_115200     0b1111000001001111 
+
 
 void setup_clock(void) {
     //external clock should be 25/4mhz
