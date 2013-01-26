@@ -70,12 +70,12 @@ static uint8_t slave_count;
  * @param count	Number of items in spi_xmega_slave_t array.
  * @return		0 = success, -ve = error.
  */
-int spi_init_multi(void *desc, uint8_t count)
+int spi_init_multi ( void *desc, uint8_t count )
 {
-	slave_array = (spi_xmega_slave_t *)desc;
-	slave_count = count;
+    slave_array = ( spi_xmega_slave_t * ) desc;
+    slave_count = count;
 
-	return 0;
+    return 0;
 }
 
 /**
@@ -85,33 +85,37 @@ int spi_init_multi(void *desc, uint8_t count)
  * @param desc	Pointer to spi_xmega_slave_t which should be in slave_array.
  * @return		Index of slave in internal slave_array, -ve = error.
  */
-int8_t spi_open(void *desc)
+int8_t spi_open ( void *desc )
 {
-	int i;
-	int8_t fd = -1;
-	spi_xmega_slave_t *p;
-	spi_xmega_slave_t *d = (spi_xmega_slave_t *)desc;
+    int i;
+    int8_t fd = -1;
+    spi_xmega_slave_t *p;
+    spi_xmega_slave_t *d = ( spi_xmega_slave_t * ) desc;
 
-	/* Search for the slave in slave_array. */
-	for (i = 0, p = slave_array; i < slave_count; i++,p++) {
-		if (p == d) {
-			fd = i; /* Save the return value. */
-		}
-	}
-	if (fd < 0) {
-		return fd;
-	}
+    /* Search for the slave in slave_array. */
+    for ( i = 0, p = slave_array; i < slave_count; i++,p++ )
+    {
+        if ( p == d )
+        {
+            fd = i; /* Save the return value. */
+        }
+    }
+    if ( fd < 0 )
+    {
+        return fd;
+    }
 
-	/* Enable the master and open this slave. */
-	if (!(*d->ctrl & SPI_ENABLE_bm)) {
-		d->port->DIRSET = PIN5_bm | PIN7_bm;
-		*d->ctrl = SPI_ENABLE_bm | SPI_MASTER_bm;
-	}
-	d->ss_port->DIRSET = d->ss_bm;
-	d->ss_port->OUTSET = d->ss_bm;
-	d->state = OPEN;
+    /* Enable the master and open this slave. */
+    if ( ! ( *d->ctrl & SPI_ENABLE_bm ) )
+    {
+        d->port->DIRSET = PIN5_bm | PIN7_bm;
+        *d->ctrl = SPI_ENABLE_bm | SPI_MASTER_bm;
+    }
+    d->ss_port->DIRSET = d->ss_bm;
+    d->ss_port->OUTSET = d->ss_bm;
+    d->state = OPEN;
 
-	return fd;
+    return fd;
 }
 
 /**
@@ -120,26 +124,28 @@ int8_t spi_open(void *desc)
  * @brief		Close the slave and disable master, if no longer in use.
  * @param fd	Index to internal slave_array.
  */
-void spi_close(int8_t fd)
+void spi_close ( int8_t fd )
 {
-	int i;
-	spi_xmega_slave_t *p;
-	spi_xmega_slave_t *d = &slave_array[fd];
+    int i;
+    spi_xmega_slave_t *p;
+    spi_xmega_slave_t *d = &slave_array[fd];
 
-	/* Set the slave to idle. */
-	d->state = IDLE;
-	d->ss_port->DIRCLR = d->ss_bm;
+    /* Set the slave to idle. */
+    d->state = IDLE;
+    d->ss_port->DIRCLR = d->ss_bm;
 
-	/* Search for a non idle slave on this master. */
-	for (i = 0, p = slave_array; i < slave_count; i++,p++) {
-		if ((p->port == d->port) && (p->state != IDLE)) {
-			return; /* Master is still in use by another slave. */
-		}
-	}
+    /* Search for a non idle slave on this master. */
+    for ( i = 0, p = slave_array; i < slave_count; i++,p++ )
+    {
+        if ( ( p->port == d->port ) && ( p->state != IDLE ) )
+        {
+            return; /* Master is still in use by another slave. */
+        }
+    }
 
-	/* Disable the master (of this slave). */
-	*d->ctrl = 0;
-	d->port->DIRCLR = PIN5_bm | PIN7_bm;
+    /* Disable the master (of this slave). */
+    *d->ctrl = 0;
+    d->port->DIRCLR = PIN5_bm | PIN7_bm;
 }
 
 /**
@@ -150,28 +156,35 @@ void spi_close(int8_t fd)
  * @param fd	Index to internal slave_array.
  * @return		0 = successful, -ve = error.
  */
-int spi_lock(int8_t fd)
+int spi_lock ( int8_t fd )
 {
-	int i;
-	spi_xmega_slave_t *d = &slave_array[fd];
-	spi_xmega_slave_t *p;
+    int i;
+    spi_xmega_slave_t *d = &slave_array[fd];
+    spi_xmega_slave_t *p;
 
-	/* Search for a busy slave on this master (d). */
-	for (i = 0, p = slave_array; i < slave_count; i++,p++) {
-		if (p == d) {
-			continue;
-		}
-		if ((p->port == d->port) && (p->state & BUSY)) {
-			return -1; /* Master is busy. */
-		}
-	}
+    /* Search for a busy slave on this master (d). */
+    for ( i = 0, p = slave_array; i < slave_count; i++,p++ )
+    {
+        if ( p == d )
+        {
+            continue;
+        }
+        if ( ( p->port == d->port ) && ( p->state & BUSY ) )
+        {
+            return -1; /* Master is busy. */
+        }
+    }
 
-	/* Lock the master for this slave. */
-	d->state |= BUSY;
-	*d->ctrl = SPI_ENABLE_bm | SPI_MASTER_bm | d->ctrl_bm;
-	d->ss_port->OUTCLR = d->ss_bm;
+    /* Lock the master for this slave. */
+    d->state |= BUSY;
+    *d->ctrl = SPI_ENABLE_bm | SPI_MASTER_bm | d->ctrl_bm;
+    if ( ! *d->ctrl & SPI_MASTER_bm )
+    {
+        return -1; //SS is being held low;
+    }
+    d->ss_port->OUTCLR = d->ss_bm;
 
-	return 0;
+    return 0;
 }
 
 /**
@@ -180,12 +193,12 @@ int spi_lock(int8_t fd)
  * @brief		Release /SS and set slave state to not busy.
  * @param fd	Index to internal slave_array.
  */
-void spi_unlock(int8_t fd)
+void spi_unlock ( int8_t fd )
 {
-	spi_xmega_slave_t *d = &slave_array[fd];
+    spi_xmega_slave_t *d = &slave_array[fd];
 
-	d->ss_port->OUTSET = d->ss_bm;
-	d->state ^= BUSY;
+    d->ss_port->OUTSET = d->ss_bm;
+    d->state ^= BUSY;
 }
 
 /**
@@ -196,15 +209,16 @@ void spi_unlock(int8_t fd)
  * @param data	Pointer to array of bytes to be written to slave.
  * @param site	Number of bytes in array that should be written to slave.
  */
-void spi_write(int8_t fd, uint8_t *data, int size)
+void spi_write ( int8_t fd, uint8_t *data, int size )
 {
-	spi_xmega_slave_t *d = &slave_array[fd];
+    spi_xmega_slave_t *d = &slave_array[fd];
 
-	while (size--) {
-		*d->data = *data;
-		while (!(*d->status & SPI_IF_bm));
-		data++;
-	}
+    while ( size-- )
+    {
+        *d->data = *data;
+        while ( ! ( *d->status & SPI_IF_bm ) );
+        data++;
+    }
 }
 
 /**
@@ -215,14 +229,15 @@ void spi_write(int8_t fd, uint8_t *data, int size)
  * @param data	Pointer to array of bytes to be read into from slave.
  * @param site	Number of bytes in array that should be read into from slave.
  */
-void spi_read(int8_t fd, uint8_t *data, int size)
+void spi_read ( int8_t fd, uint8_t *data, int size )
 {
-	spi_xmega_slave_t *d = &slave_array[fd];
+    spi_xmega_slave_t *d = &slave_array[fd];
 
-	while (size--) {
-		*d->data = 0;
-		while (!(*d->status & SPI_IF_bm));
-		*data = *d->data;
-		data++;
-	}
+    while ( size-- )
+    {
+        *d->data = 0;
+        while ( ! ( *d->status & SPI_IF_bm ) );
+        *data = *d->data;
+        data++;
+    }
 }
