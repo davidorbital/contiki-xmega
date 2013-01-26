@@ -6,10 +6,6 @@
  *
  * Based on the enc28j60.c file from the AVRlib library by Pascal Stang.
  * For AVRlib See http://www.procyonengineering.com/
- * Used with explicit permission of Pascal Stang.
- *
- * Title: Microchip ENC28J60 Ethernet Interface Driver
- * Chip type           : ATMEGA88 with ENC28J60
  *********************************************/
 #include <avr/io.h>
 #include <stdio.h>
@@ -25,8 +21,6 @@
 #endif
 
 #define XAP_PORT 3865
-
-
 
 
 uint8_t mymac[6] = {0x54,0x55,0x58,0x10,0x00,0x44};
@@ -413,77 +407,6 @@ void enc28j60PacketSend(uint16_t len, uint8_t* packet)
         }
 }
 
-//scott added
-
-
-//prepare to send a packet. Gets everything ready
-void enc28j60TXPacketStart()
-{
-  // Set the write pointer to start of transmit buffer area
-
-    //lower power?
-  //enc28j60PhyWrite(PHCON2, PHCON2_HDLDIS);
-  
-  enc28j60Write(EWRPTL, TXSTART_INIT&0xFF);
-  enc28j60Write(EWRPTH, TXSTART_INIT>>8);
-
-  //reset packet length to 0
-  totalPacketSize = 0;
-  
-  // write per-packet control byte (0x00 means use macon3 settings)
-  enc28j60WriteOp(ENC28J60_WRITE_BUF_MEM, 0, 0x00);
-
- 
-
-}
-
-//write data into the TX packet buffer
-void  enc28j60TXPacketWrite(uint16_t len, uint8_t* buffer)
-{
-    enc28j60WriteBuffer(len, buffer);
-    totalPacketSize+= len;
-    
-}
-
-
-#define min(x,y) (x<y?x:y)
-
-//write data into the TX packet buffer from the RX buffer
-void  enc28j60RXTXCopy(uint16_t len)
-{
-    uint8_t buffer[16];
-    while (len > 0) {
-        uint8_t amt = min(16,len);
-        enc28j60ReadBuffer(amt, buffer);
-        enc28j60WriteBuffer(amt, buffer);
-        totalPacketSize+= amt;
-        len -= amt;
-    }
-}
-
-
-//finalize the packet and send it off
-void enc28j60TXPacketFinalize()
-{
-  // Set the TXND pointer to correspond to the packet size given
-  enc28j60Write(ETXNDL, (TXSTART_INIT+totalPacketSize)&0xFF);
-  enc28j60Write(ETXNDH, (TXSTART_INIT+totalPacketSize)>>8);
-
-  // send the contents of the transmit buffer onto the network
-  enc28j60WriteOp(ENC28J60_BIT_FIELD_SET, ECON1, ECON1_TXRTS);
-  // Reset the transmit logic problem. See Rev. B4 Silicon Errata point 12.
-  if( (enc28j60Read(EIR) & EIR_TXERIF) ){
-    enc28j60WriteOp(ENC28J60_BIT_FIELD_CLR, ECON1, ECON1_TXRTS);
-    enc28j60WriteOp(ENC28J60_BIT_FIELD_CLR, EIR, EIR_TXERIF);
-  }
-
-//lower power?
-  //enc28j60PhyWrite(PHCON2,PHCON2_TXDIS | PHCON2_HDLDIS);
-}
-
-
-//end scott added
-
 
 // Gets a packet from the network receive buffer, if one is available.
 // The packet will by headed by an ethernet header.
@@ -645,69 +568,3 @@ void enc28j60FinishPacket()
 }
 
 
-void enc28j60HandlePacket(uint16_t len, uint8_t* packet)
-{
-
-    //copy ethernet and IP header in
-//     enc28j60ReadBuffer(42, packet);
-// 
-// 
-//   
-//     // arp is broadcast if unknown but a host may also
-//     // verify the mac address by sending it to
-//     // a unicast address.
-//     
-//     if(eth_type_is_arp_and_my_ip(packet,len)){
-//         make_arp_answer_from_request(packet,len);
-//         // eth+arp is 42 bytes:
-//         enc28j60PacketSend(42,packet);
-//         return;
-//     //   } else if(eth_type_is_ip_and_my_ip(packet,len)==0){
-//     //       // check if ip packets (icmp or udp) are for us:
-//     //     //not for us
-//     //     return;
-//     } else if(packet[IP_PROTO_P]==IP_PROTO_ICMP_V && packet[ICMP_TYPE_P]==ICMP_TYPE_ECHOREQUEST_V){
-//         // a ping packet, let's send pong
-// 
-//         make_echo_reply_from_request(packet,len);
-//         
-//     } else if(packet[IP_PROTO_P]==IP_PROTO_UDP_V  
-// //         && packet[IP_DST_P] == 0xff
-// //         && packet[IP_DST_P+1] == 0xff
-// //         && packet[IP_DST_P+2] == 0xff
-// //         && packet[IP_DST_P+3] == 0xff
-//         && packet[UDP_DST_PORT_H_P] == (XAP_PORT >> 8)
-//         && packet[UDP_DST_PORT_L_P] == (XAP_PORT & 0xFF) ){
-//         //it's a xAP packet!
-// 
-// 
-//         
-// 
-//         uint16_t len = (packet[UDP_LEN_H_P] << 8) + packet[UDP_LEN_L_P];
-//         //len = 0;
-//         //TODO
-//         //xap_handleMessage(len);
-// 
-//     } else {
-// 
-// 
-//     }
-
-}
-
-//sends a given length of data from a program space buffer
-void enc28j60TXPacketWrite_P(uint16_t len,  PGM_VOID_P buffer) {
-    #define min(x,y) (x<y?x:y)
-    uint8_t pos = 0;
-    uint8_t buf[16];
-    while (len > 0) {
-        uint8_t amt = min(16, len);
-        //copy into buf
-        memcpy_P (buf, buffer+pos, amt);
-        //write to packet
-        enc28j60TXPacketWrite(amt, buf);
-        //checksum_xap_data(amt, buf);
-        len -= amt;
-        pos += amt;
-    }
-}

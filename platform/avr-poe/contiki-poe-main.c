@@ -59,7 +59,7 @@
 #include "dev/serial-line.h"
 #include "dev/slip.h"
 #include "dev/watchdog.h"
-#include <autostart.h>
+#include <sys/autostart.h>
 #include "interrupt.h"
 
 #include <util/delay.h>
@@ -70,22 +70,15 @@
 
 
 void setup_clock(void) {
-    //set to run at 8MHz
-//   CLKPR = _BV(CLKPCE);
-//   CLKPR = 0x80;
-//   CLKPR = 0x00;
-
-    //CPU_CCP = 0x9D; //set change enabled
-
+    //external clock should be 25/4mhz
+    
     //turn on external osc.
     OSC.CTRL |= OSC_XOSCEN_bm   ; //also PLLEN
 
     // external osc clock source, 20x multiplier
     OSC_PLLCTRL = 0b11001000;
-    //OSC.PLLCTRL = 0b11000011;
 
-
-
+    //see page 83
     _delay_ms(100);
     OSC.CTRL |= OSC_PLLEN_bm;
 
@@ -96,8 +89,7 @@ void setup_clock(void) {
     CLK.CTRL = CLK_SCLKSEL_PLL_gc;
 
     CPU_CCP = CCP_IOREG_gc;
-    //CLK.PSCTRL = (CLK.PSCTRL & ~(CLK_PSBCDIV_gm) )| CLK_PSBCDIV_2_2_gc;
-    CLK.PSCTRL = 0b00000011;
+    CLK.PSCTRL = 0b00000011; //prescaler A = /1, prescaler B&C = /2. Cpu clock is thus /4.
     
     /* Lock the clock so that clock_init does not adjust later. */
     CCP = CCP_IOREG_gc;
@@ -120,45 +112,31 @@ void initialize(void)
   watchdog_init();
   setup_board();
 
-//       
-//
+  //enable interupts
   interrupt_init( PMIC_CTRL_HML_gm);
   interrupt_start();
   
-  rs232_init(RS232_USARTE0, XMEGA_BAUD_ASYNC_9600 ,USART_PARITY_NONE | USART_STOP_BITS_1 | USART_DATA_BITS_8);
-
-
-  rs232_redirect_stdout(RS232_USARTE0);
-
-    
   setup_clock();
   clock_init();
+  
+  /* zeroth rs232 port for debugging */
+  rs232_init(RS232_USARTE0, XMEGA_BAUD_ASYNC_EXTOSC_115200 ,USART_PARITY_NONE | USART_STOP_BITS_1 | USART_DATA_BITS_8);
+  
+  /* Redirect stdout to zeroth port */
+  rs232_redirect_stdout(RS232_USARTE0);
 
   //watchdog_start();
 
-  //enable interupts
-
     _delay_ms(300);
   
-  /* zeroth rs232 port for debugging */
   PORTE.DIRSET = PIN3_bm;
   PORTE.OUTSET= PIN3_bm;
   PORTE.DIRCLR = PIN2_bm;
 
 
-
-  /* Redirect stdout to zeroth port */
-
-
-  
-
 //#if ANNOUNCE_BOOT
   printf_P(PSTR("\n*******Booting %s*******\n"),CONTIKI_VERSION_STRING);
 //#endif
-
-
-/* rtimers needed for radio cycling */
-//  rtimer_init();
 
  /* Initialize process subsystem */
   process_init();
@@ -199,7 +177,6 @@ main(void)
   while(1) {
     watchdog_periodic();
     process_run();
-
   }
   return 0;
 }

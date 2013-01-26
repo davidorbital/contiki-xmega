@@ -10,8 +10,6 @@
 *functions for the Microchip ENC28J60 10Mb Ethernet Controller and PHY.
 *This chip is novel in that it is a full MAC+PHY interface all in a 28-pin
 *chip, using an SPI interface to the host processor.
-*
-*
 *****************************************************************************/
 //@{
 
@@ -56,20 +54,13 @@ extern void enc28j60Init(struct uip_eth_addr* macaddr);
 extern void enc28j60PacketSend(uint16_t len, uint8_t* packet);
 
 
-extern void enc28j60TXPacketStart(void);
-extern void enc28j60TXPacketWrite(uint16_t len, uint8_t* buffer);
-extern void  enc28j60RXTXCopy(uint16_t len);
-extern void enc28j60TXPacketFinalize(void);
-
 
 extern uint16_t enc28j60PacketReceive(uint16_t maxlen, uint8_t* packet);
 extern uint8_t enc28j60getrev(void);
 
 extern uint16_t enc28j60GetPacketLength(void);
 extern void enc28j60FinishPacket(void);
-extern void enc28j60HandlePacket(uint16_t len, uint8_t* packet);
 
-extern void enc28j60TXPacketWrite_P(uint16_t len,  PGM_VOID_P buffer);
 
 #endif
 //@}
