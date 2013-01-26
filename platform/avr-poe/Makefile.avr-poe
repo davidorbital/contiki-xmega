@@ -28,6 +28,6 @@ AVRDUDE_OPTIONS=-V
 
 
 
-include $(CONTIKIAVR)/Makefile.avr_scott
+include $(CONTIKIAVR)/Makefile.avr_poe
 #include $(CONTIKIAVR)/radio/Makefile.radio
 

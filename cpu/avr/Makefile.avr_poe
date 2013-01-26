@@ -24,6 +24,7 @@ CONTIKI_CPU=$(CONTIKI)/cpu/avr
 ### TARGETLIBS are platform-specific routines in the contiki library path
 CONTIKI_CPU_DIRS            = . dev
 AVR        = clock.c leds-arch.c rs232.c interrupt.c watchdog.c
+AVR += spi-xmega.c
 #ELFLOADER  = elfloader.c elfloader-avr.c symtab-avr.c
 TARGETLIBS = leds.c
 #random.c leds.c

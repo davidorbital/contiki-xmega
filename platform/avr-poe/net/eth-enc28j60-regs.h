@@ -240,9 +240,7 @@
 // stp TX buffer at end of mem
 #define TXSTOP_INIT      0x1FFF
 //
-// max frame length which the conroller will accept:
-#define        MAX_FRAMELEN        1518        // maximum ethernet frame length
-//#define MAX_FRAMELEN     500
+// max frame length which the conroller will accept is now set by UIP_BUFSIZE
 
 
 

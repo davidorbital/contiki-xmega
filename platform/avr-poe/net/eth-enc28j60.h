@@ -20,7 +20,7 @@ extern uint8_t mymac[6];
 #define ETH_ENC28J60_H
 
 
-#include "eth-enc38j60-regs.h"
+#include "eth-enc28j60-regs.h"
 #include "uip.h"
 #include <inttypes.h>
 #include <avr/pgmspace.h>
@@ -53,14 +53,11 @@ extern void enc28j60PhyWrite(uint8_t address, uint16_t data);
 extern void enc28j60Init(struct uip_eth_addr* macaddr);
 extern void enc28j60PacketSend(uint16_t len, uint8_t* packet);
 
-
-
 extern uint16_t enc28j60PacketReceive(uint16_t maxlen, uint8_t* packet);
 extern uint8_t enc28j60getrev(void);
 
-extern uint16_t enc28j60GetPacketLength(void);
-extern void enc28j60FinishPacket(void);
 
+PROCESS_NAME(enc28j60_process);
 
 #endif
 //@}

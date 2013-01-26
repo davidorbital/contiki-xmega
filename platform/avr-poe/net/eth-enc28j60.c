@@ -9,24 +9,27 @@
  *********************************************/
 #include <avr/io.h>
 #include <stdio.h>
-#include "eth-enc28j60.h"
-#include <enc28j60pins.h>
+#include <string.h>
 
 //just so we can send stupid \r.
 #include "dev/rs232.h"
 
-//
+#include "contiki.h"
+#include "contiki-net.h"
+#include "contiki-lib.h"
+
+#include "eth-enc28j60.h"
+
+#include "xmega-signatures.h"
+
+#include <spi-xmega.h>
+#include <enc28j60pins.h>
 
 #ifndef ALIBC_OLD
 #include <util/delay.h>
 #else
 #include <avr/delay.h>
 #endif
-
-#define XAP_PORT 3865
-
-
-uint8_t mymac[6] = {0x54,0x55,0x58,0x10,0x00,0x44};
 
 static uint8_t Enc28j60Bank;
 static uint16_t NextPacketPtr;
@@ -38,133 +41,87 @@ uint16_t totalPacketSize;
 #endif
 
 
-
-#define CSACTIVE ENC28J60_CONTROL_CS_PORT.OUTCLR = (1<<ENC28J60_CONTROL_CS)
-#define CSPASSIVE ENC28J60_CONTROL_CS_PORT.OUTSET = (1<<ENC28J60_CONTROL_CS)
-
-
-// set CS to 0 = active
-//
-//
-#define waitspi() while(!(SPID.STATUS & SPI_IF_bm))
-
+uint8_t spfd = -1;
 
 void enc28j60Reset(void) {
-//     printf("begin HW reset\n");
-//             /* enable PB0, reset as output */
-//             ENC28J60_CONTROL_RESET_PORT.DIRSET = 1<<ENC28J60_CONTROL_RESET;
-// 
-//         /* set output to gnd, reset the ethernet chip */
-//         ENC28J60_CONTROL_RESET_PORT.OUTCLR = (1<<ENC28J60_CONTROL_RESET);
-//        _delay_ms(20);
-//         
-//         /* set output to Vcc, reset inactive */
-//         ENC28J60_CONTROL_RESET_PORT.OUTSET = (1<<ENC28J60_CONTROL_RESET);
-       printf("begin reset\n");
+//     printf("Eth reset\n");
     _delay_ms(100);
     //perform a software reset
-    CSACTIVE;
-    // issue write command
-    SPIPORT.DATA = 0xff;
-    waitspi();
-    CSPASSIVE;
+    if (spi_lock(spfd)!= 0) {
+        printf("could not lock\n");
+    }
+//      printf("locked\n");
+    uint8_t send = 0xff;
+    spi_write(spfd, &send, sizeof(send));
+    spi_unlock(spfd);
     _delay_ms(100);
-    //enc28j60PhyWrite(PHLCON, 0b0000110110100000);
     enc28j60PhyWrite(PHCON1, 0x8000);
     _delay_ms(1800);
-    printf("ready to go\n");
-//     while (enc28j60Read(ESTAT)&ESTAT_CLKRDY) {
-//         _delay_ms(1);
-//         printf("clock not ready\n");
-//     }
+//     printf("ready to go\n");
 
     
 }
 
 uint8_t enc28j60ReadOp(uint8_t op, uint8_t address)
 {
-        CSACTIVE;
+        if (spi_lock(spfd)!= 0) {
+            printf("could not lock\n");
+        }
         // issue read command
-        SPIPORT.DATA = op | (address & ADDR_MASK);
-        waitspi();
+        uint8_t send = op | (address & ADDR_MASK);
+        spi_write(spfd, &send, sizeof(send));
         // read data
-        SPIPORT.DATA = 0x00;
-        waitspi();
+        spi_read(spfd, &send, sizeof(send));
         // do dummy read if needed (for mac and mii, see datasheet page 29)
         if(address & 0x80)
         {
-                SPIPORT.DATA = 0x00;
-                waitspi();
+            spi_read(spfd, &send, sizeof(send));
         }
         // release CS
-        CSPASSIVE;
-        return(SPIPORT.DATA);
+        spi_unlock(spfd);
+        return(send);
 }
 
 void enc28j60WriteOp(uint8_t op, uint8_t address, uint8_t data)
 {
-        CSACTIVE;
+        if (spi_lock(spfd)!= 0) {
+            printf("could not lock\n");
+        }  
+        address = op | (address & ADDR_MASK);
         // issue write command
-        SPIPORT.DATA = op | (address & ADDR_MASK);
-
-        waitspi();
-
+        spi_write(spfd, &address, sizeof(address));
         // write data
-        SPIPORT.DATA = data;
-
-        waitspi();
-
-        CSPASSIVE;
+        spi_write(spfd, &data, sizeof(data));
+        spi_unlock(spfd);
 }
 
 void enc28j60ReadBuffer(uint16_t len, uint8_t* data)
 {
-        CSACTIVE;
+        spi_lock(spfd);
         // issue read command
-        SPIPORT.DATA = ENC28J60_READ_BUF_MEM;
-        waitspi();
-        while(len)
-        {
-                len--;
-                // read data
-                SPIPORT.DATA = 0x00;
-                waitspi();
-                *data = SPIPORT.DATA;
-                data++;
-        }
+        uint8_t send = ENC28J60_READ_BUF_MEM;
+        spi_write(spfd, &send, sizeof(send));
+        spi_read(spfd, data,len);
         *data='\0';
-        CSPASSIVE;
+        spi_unlock(spfd);
 }
 
 uint8_t enc28j60ReadBufferByte(void)
 {
         uint8_t ret;
-        CSACTIVE;
-        // issue read command
-        SPIPORT.DATA = ENC28J60_READ_BUF_MEM;
-        waitspi();
-        SPIPORT.DATA = 0x00;
-        waitspi();
-        ret = SPIPORT.DATA;
-        CSPASSIVE;
+        //just a call to the multi-byte version
+        enc28j60ReadBuffer(1,&ret);
         return ret;
 }
 
 void enc28j60WriteBuffer(uint16_t len, uint8_t* data)
 {
-        CSACTIVE;
+        spi_lock(spfd);
         // issue write command
-        SPIPORT.DATA = ENC28J60_WRITE_BUF_MEM;
-        waitspi();
-        while(len)
-        {
-                len--;
-                // write data
-                SPIPORT.DATA = *data;
-                data++;
-                waitspi();
-        }
-        CSPASSIVE;
+        uint8_t send = ENC28J60_WRITE_BUF_MEM;
+        spi_write(spfd, &send, sizeof(send));
+        spi_write(spfd,data,len);
+        spi_unlock(spfd);
 }
 
 void enc28j60SetBank(uint8_t address)
@@ -197,180 +154,106 @@ void enc28j60Write(uint8_t address, uint8_t data)
 
 void enc28j60PhyWrite(uint8_t address, uint16_t data)
 {
-        // set the PHY register address
-        enc28j60Write(MIREGADR, address);
-        // write the PHY data
-        enc28j60Write(MIWRL, data);
-        enc28j60Write(MIWRH, data>>8);
-        // wait until the PHY write completes
-        while(enc28j60Read(MISTAT) & MISTAT_BUSY){
-                _delay_us(15);
-        }
+    // set the PHY register address
+    enc28j60Write(MIREGADR, address);
+    // write the PHY data
+    enc28j60Write(MIWRL, data);
+    enc28j60Write(MIWRH, data>>8);
+    // wait until the PHY write completes
+    while(enc28j60Read(MISTAT) & MISTAT_BUSY){
+        _delay_us(15);
+    }
 }
-
-
 
 // ----------------------------- begin higher-level access ------------------------------------
 
 
-
-
 void enc28j60Init(uip_eth_addr* macaddr)
 {
+    printf ( "eth: Init\n" );
+    //init the multi-SPI interface with just one SPI device
+    spi_init_multi ( enc28j60_spi,1 );
+    //we're going to open this and just leave it open for now.
+    spfd = spi_open ( &enc28j60_spi[0] );
+//     printf ( "spfd = %d\n", spfd );
     
-    
-    
-//     _delay_ms(1);
-//     while(1) {
-//         uint8_t i;
-//         for(i=0;i<test;i++) {
-//             PORTA.DIRSET = 1<<3;
-//             _delay_ms(1);
-//             PORTA.OUTSET = 1<<3;
-//             _delay_ms(1);
-//             PORTA.OUTCLR = 1<<3;
-//             
-//         }
-//         test+=1;
-//         if(test>10)
-//             test=0;
-//         _delay_ms(500);
-//         printf("printf working %d\n", test);
-//     }
-//     
-	// initialize I/O
-	printf("begin Init\n");
+    // perform system reset
+    enc28j60Reset();
+    // The CLKRDY does not work. See Rev. B4 Silicon Errata point. Just wait.
+    _delay_ms(1);
 
-	ENC28J60_CONTROL_CS_PORT.DIR |= 1<<ENC28J60_CONTROL_CS;
-	CSPASSIVE;
-        //
-
-  //this is very specific!
-  SPIPINPORT.DIRSET = (1<<7) | (1<<5) | (1<<4); //mosi, sck, ss output
-  SPIPINPORT.DIRCLR = (1<<6); //MISO as input
-	//DDRB  |= 1<<PB3 |1<<PB5 | 1<<PB2; // mosi, sck, ss output
-	//cbi(DDRB,PINB4); // MISO is input
-        //
-	CSPASSIVE;
-  //      cbi(PORTB,PB3); // MOSI low
-  //      cbi(PORTB,PB5); // SCK low
-  SPIPINPORT.OUTCLR = (1<<5) | (1<<7);
-
-  
-	//
-	// initialize SPI interface
-	// master mode and Fosc/2 clock:
-  //      SPCR = (1<<SPE)|(1<<MSTR)|(1<<SPR1);
-  SPIPORT.CTRL = SPI_ENABLE_bm | SPI_MASTER_bm | SPI_CLK2X_bm;
-  //SPIPORT.CTRL = SPI_ENABLE_bm | SPI_MASTER_bm;
-  //      SPSR |= (1<<SPI2X);
-        
-  printf("do reset\n");
-  
-  // perform system reset
-  enc28j60Reset();
-  
-
-  enc28j60SetBank(ECON1);
-  //change LED settings
-  //enc28j60PhyWrite(PHLCON, 0b0000110110100000);
-
-  //flash both
+    enc28j60SetBank ( ECON1 );
+    //change LED settings
+    //enc28j60PhyWrite(PHLCON, 0b0000110110100000);
+    //flash both
 //   enc28j60PhyWrite(PHLCON, 0b0000101010100010);
-  
-  //red for rx, green for tx, min stretching
-  enc28j60PhyWrite(PHLCON, 0b0000000100100010);
-  
-  //green for tx, red for link/rx, min stretching
-  //enc28j60PhyWrite(PHLCON, 0b0000000111000010);
-	// check CLKRDY bit to see if reset is complete
-  // The CLKRDY does not work. See Rev. B4 Silicon Errata point. Just wait.
-	//while(!(enc28j60Read(ESTAT) & ESTAT_CLKRDY));
-	// do bank 0 stuff
-	// initialize receive buffer
-	// 16-bit transfers, must write low byte first
-	// set receive buffer start address
-	NextPacketPtr = RXSTART_INIT;
-        // Rx start
-	enc28j60Write(ERXSTL, RXSTART_INIT&0xFF);
-	enc28j60Write(ERXSTH, RXSTART_INIT>>8);
-	// set receive pointer address
-	enc28j60Write(ERXRDPTL, RXSTART_INIT&0xFF);
-	enc28j60Write(ERXRDPTH, RXSTART_INIT>>8);
-	// RX end
-	enc28j60Write(ERXNDL, RXSTOP_INIT&0xFF);
-	enc28j60Write(ERXNDH, RXSTOP_INIT>>8);
-	// TX start
-	enc28j60Write(ETXSTL, TXSTART_INIT&0xFF);
-	enc28j60Write(ETXSTH, TXSTART_INIT>>8);
-	// TX end
-	enc28j60Write(ETXNDL, TXSTOP_INIT&0xFF);
-	enc28j60Write(ETXNDH, TXSTOP_INIT>>8);
-	// do bank 1 stuff, packet filter:
-        // For broadcast packets we allow only ARP packtets
-        // All other packets should be unicast only for our mac (MAADR)
-        //
-        // The pattern to match on is therefore
-        // Type     ETH.DST
-        // ARP      BROADCAST
-        // 06 08 -- ff ff ff ff ff ff -> ip checksum for theses bytes=f7f9
-        // in binary these poitions are:11 0000 0011 1111
-        // This is hex 303F->EPMM0=0x3f,EPMM1=0x30
-	//enc28j60Write(ERXFCON, ERXFCON_UCEN|ERXFCON_CRCEN|ERXFCON_PMEN);
-  //changed to allow all broadbast UDP packets (!)
-  //another option would be to not do ARP at all (breaking ping, for example), and use the pattern match to match the UDP port number and broadcast address
-  
-//   enc28j60Write(ERXFCON, ERXFCON_UCEN|ERXFCON_CRCEN|ERXFCON_PMEN|ERXFCON_BCEN);
-// 	enc28j60Write(EPMM0, 0x3f);
-// 	enc28j60Write(EPMM1, 0x30);
-// 	enc28j60Write(EPMCSL, 0xf9);
-// 	enc28j60Write(EPMCSH, 0xf7);
+    //red for rx, green for tx, min stretching
+    enc28j60PhyWrite ( PHLCON, 0b0000000100100010 );
+    //green for tx, red for link/rx, min stretching
+    //enc28j60PhyWrite(PHLCON, 0b0000000111000010);
+    
+    NextPacketPtr = RXSTART_INIT;
+    // Rx start
+    enc28j60Write ( ERXSTL, RXSTART_INIT&0xFF );
+    enc28j60Write ( ERXSTH, RXSTART_INIT>>8 );
+    // set receive pointer address
+    enc28j60Write ( ERXRDPTL, RXSTART_INIT&0xFF );
+    enc28j60Write ( ERXRDPTH, RXSTART_INIT>>8 );
+    // RX end
+    enc28j60Write ( ERXNDL, RXSTOP_INIT&0xFF );
+    enc28j60Write ( ERXNDH, RXSTOP_INIT>>8 );
+    // TX start
+    enc28j60Write ( ETXSTL, TXSTART_INIT&0xFF );
+    enc28j60Write ( ETXSTH, TXSTART_INIT>>8 );
+    // TX end
+    enc28j60Write ( ETXNDL, TXSTOP_INIT&0xFF );
+    enc28j60Write ( ETXNDH, TXSTOP_INIT>>8 );
 
-  //accept broadcast packets (to FF:FF:FF:FF:FF:FF) and accept direct packets
-  enc28j60Write(ERXFCON, ERXFCON_UCEN|ERXFCON_BCEN);
-  //enc28j60Write(ERXFCON, 0);
-        
-        //
-	// do bank 2 stuff
-	// enable MAC receive
-	enc28j60Write(MACON1, MACON1_MARXEN|MACON1_TXPAUS|MACON1_RXPAUS);
-  if (enc28j60Read(MACON1) != (MACON1_MARXEN|MACON1_TXPAUS|MACON1_RXPAUS)) {
-    PRINTF("not working!");
+    //accept broadcast packets (to FF:FF:FF:FF:FF:FF) and accept direct packets
+    enc28j60Write ( ERXFCON, ERXFCON_UCEN|ERXFCON_BCEN );
+    
+    // do bank 2 stuff
+    // enable MAC receive
+    enc28j60Write ( MACON1, MACON1_MARXEN|MACON1_TXPAUS|MACON1_RXPAUS );
+    if ( enc28j60Read ( MACON1 ) != ( MACON1_MARXEN|MACON1_TXPAUS|MACON1_RXPAUS ) )
+    {
+        PRINTF ( "MAC init failed\n" );
+    }
+    // bring MAC out of reset
+    enc28j60Write ( MACON2, 0x00 );
+    // enable automatic padding to 60bytes and CRC operations
+    enc28j60WriteOp ( ENC28J60_BIT_FIELD_SET, MACON3, MACON3_PADCFG0|MACON3_TXCRCEN|MACON3_FRMLNEN );
+    // set inter-frame gap (non-back-to-back)
+    enc28j60Write ( MAIPGL, 0x12 );
+    enc28j60Write ( MAIPGH, 0x0C );
+    // set inter-frame gap (back-to-back)
+    enc28j60Write ( MABBIPG, 0x12 );
+    // Set the maximum packet size which the controller will accept
+    // Do not send packets longer than UIP_BUFSIZE:
+    enc28j60Write ( MAMXFLL, UIP_BUFSIZE&0xFF );
+    enc28j60Write ( MAMXFLH, UIP_BUFSIZE>>8 );
+    
+    // do bank 3 stuff
+    // write MAC address
+    // NOTE: MAC address in ENC28J60 is byte-backward
+    enc28j60Write ( MAADR5, macaddr->addr[0] );
+    enc28j60Write ( MAADR4, macaddr->addr[1] );
+    enc28j60Write ( MAADR3, macaddr->addr[2] );
+    enc28j60Write ( MAADR2, macaddr->addr[3] );
+    enc28j60Write ( MAADR1, macaddr->addr[4] );
+    enc28j60Write ( MAADR0, macaddr->addr[5] );
+    // no loopback of transmitted frames
+    enc28j60PhyWrite ( PHCON2, PHCON2_HDLDIS );
 
-  }
-	// bring MAC out of reset
-	enc28j60Write(MACON2, 0x00);
-	// enable automatic padding to 60bytes and CRC operations
-	enc28j60WriteOp(ENC28J60_BIT_FIELD_SET, MACON3, MACON3_PADCFG0|MACON3_TXCRCEN|MACON3_FRMLNEN);
-	// set inter-frame gap (non-back-to-back)
-	enc28j60Write(MAIPGL, 0x12);
-	enc28j60Write(MAIPGH, 0x0C);
-	// set inter-frame gap (back-to-back)
-	enc28j60Write(MABBIPG, 0x12);
-	// Set the maximum packet size which the controller will accept
-        // Do not send packets longer than MAX_FRAMELEN:
-	enc28j60Write(MAMXFLL, MAX_FRAMELEN&0xFF);	
-	enc28j60Write(MAMXFLH, MAX_FRAMELEN>>8);
-	// do bank 3 stuff
-        // write MAC address
-        // NOTE: MAC address in ENC28J60 is byte-backward
-        printf("setting mac: %x to %x", macaddr->addr[5], macaddr->addr[0]);
-        enc28j60Write(MAADR5, macaddr->addr[0]);
-        enc28j60Write(MAADR4, macaddr->addr[1]);
-        enc28j60Write(MAADR3, macaddr->addr[2]);
-        enc28j60Write(MAADR2, macaddr->addr[3]);
-        enc28j60Write(MAADR1, macaddr->addr[4]);
-        enc28j60Write(MAADR0, macaddr->addr[5]);
-	// no loopback of transmitted frames
-	enc28j60PhyWrite(PHCON2, PHCON2_HDLDIS);
+    // switch to bank 0
+    enc28j60SetBank ( ECON1 );
 
-  
-	// switch to bank 0
-	enc28j60SetBank(ECON1);
-	// enable interrutps
-	enc28j60WriteOp(ENC28J60_BIT_FIELD_SET, EIE, EIE_INTIE|EIE_PKTIE);
-	// enable packet reception
-	enc28j60WriteOp(ENC28J60_BIT_FIELD_SET, ECON1, ECON1_RXEN);
+    // enable interrutps
+//     //enc28j60WriteOp(ENC28J60_BIT_FIELD_SET, EIE, EIE_INTIE|EIE_PKTIE);
+    enc28j60WriteOp ( ENC28J60_BIT_FIELD_SET, EIE, EIE_PKTIE ); //cannot enable interrupts if INT is wired to SS - will fix on next version of board
+
+    // enable packet reception
+    enc28j60WriteOp ( ENC28J60_BIT_FIELD_SET, ECON1, ECON1_RXEN );
 }
 
 // read the revision of the chip:
@@ -455,7 +338,10 @@ uint16_t enc28j60PacketReceive(uint16_t maxlen, uint8_t* packet)
   }
 
   if (wait>0){
-    printf(" %d pkt wait\n", wait );
+    if (wait>2){
+        printf("eth: %d pkts waiting\n", wait );
+    }
+    
     if( (enc28j60Read(EIR) & (EIR_RXERIF)) ){
         enc28j60WriteOp(ENC28J60_BIT_FIELD_SET, ECON1, ECON1_RXRST);
         enc28j60WriteOp(ENC28J60_BIT_FIELD_CLR, ECON1, ECON1_RXRST);
@@ -518,7 +404,7 @@ uint16_t enc28j60PacketReceive(uint16_t maxlen, uint8_t* packet)
 
 
 //scott added
-
+/*
 
 // Gets a packet from the network receive buffer, if one is available.
 // The packet will by headed by an ethernet header.
@@ -595,6 +481,182 @@ void enc28j60FinishPacket()
     }
     
 
+}*/
+
+
+/*---------------------------------------------------------------------------*/
+/*
+ * This is the end of the code that interacts with the hardware, and the begining of the code that implements the uIP driver.
+ */
+
+
+#define BUF ((struct uip_eth_hdr *)&uip_buf[0])
+#define BUFNP ((struct uip_eth_hdr)uip_buf)
+
+
+//prints whatever is in the uip_buf
+void print_packet(void) {
+    uint16_t i = 0;
+    PRINTF("packet: ");
+    for (i=0;i <uip_len; i++) {
+        PRINTF("%x ",uip_buf[i]);
+    }
+    PRINTF("\n");
 }
+
+/*---------------------------------------------------------------------------*/
+/*
+ * We declare the process that we use to register with the TCP/IP stack,
+ * and to check for incoming packets.
+ */
+PROCESS(enc28j60_process, "enc28j60 driver");
+/*---------------------------------------------------------------------------*/
+/*
+ * Next, we define the function that transmits packets. This function
+ * is called from the TCP/IP stack when a packet is to be transmitted.
+ * The packet is located in the uip_buf[] buffer, and the length of the
+ * packet is in the uip_len variable.
+ */
+u8_t
+enc28j60_driver_output(void)
+{
+    
+    //PRINTF("in enc28j60_driver_output, len is %d\n ",uip_len);
+    
+    memmove((((void*)&uip_buf)) + 14, (&uip_buf), uip_len);
+    
+    //PRINTF("packet to send, len: %d\n", uip_len);
+    //print_packet();
+    
+    uip_arp_out();
+    //PRINTF("in enc28j60_driver_output, post arp, len is %d\n ",uip_len);
+    //print_packet();
+    
+    enc28j60PacketSend(uip_len, uip_buf);
+    // A network device driver returns always zero.
+    return 0;
+}
+
+/* another version, but doesn't do ARP*/
+u8_t
+enc28j60_driver_output_noarp(void)
+{
+    
+//     PRINTF("packet to send, already with arp, len: %d\n", uip_len);
+    //print_packet();
+    enc28j60PacketSend(uip_len, uip_buf);
+    return 0;
+}
+
+static void
+pollhandler(void)
+{
+    uint8_t i;
+    for(i = 0; i < UIP_CONNS; i++) {
+        //PRINTF("poll UIP %d\n", i);
+        uip_periodic(i);
+        /* If the above function invocation resulted in data that
+         *            should be sent out on the network, the global variable
+         *            uip_len is set to a value > 0. */
+        if(uip_len > 0) {
+            PRINTF("con caused send\n");
+            enc28j60_driver_output();
+        }
+    }
+    
+    for(i = 0; i < UIP_UDP_CONNS; i++) {
+        uip_udp_periodic(i);
+        /* If the above function invocation resulted in data that
+         *            should be sent out on the network, the global variable
+         *            uip_len is set to a value > 0. */
+        if(uip_len > 0) {
+            PRINTF("UDP con caused send\n");
+            enc28j60_driver_output();
+        }
+    }
+    
+    //copy the packet into our buffer
+    uip_len = enc28j60PacketReceive(UIP_BUFSIZE, uip_buf);//check_and_copy_packet();
+    
+    if(uip_len > 0) {
+        //print_packet();
+        struct uip_eth_hdr * hdrp = BUF;
+        if(hdrp->type == uip_htons(UIP_ETHTYPE_IP)) {
+            //PRINTF("RXed an IP packet, len: %d\n", uip_len);
+            uip_arp_ipin();
+            //PRINTF("RXed an IP packet, post ARP, len: %d, seq %lx\n", uip_len, uip_htonl(*(uint32_t*)(uip_buf + 38)));
+            //print_packet();
+            
+            //tcpip_input will expect an IP packet, not an ethernet frame
+            memmove((&uip_buf), ((void*)&uip_buf) + 14, uip_len);
+            uip_len -= 14;
+            //PRINTF("RX an IP packet START\n");
+            tcpip_input();
+            //PRINTF("RX an IP packet STOP\n");
+        } else if(hdrp->type == uip_htons(UIP_ETHTYPE_ARP)) {
+            //PRINTF("RXed an ARP packet, len: %d\n", uip_len);
+            //print_packet();
+            uip_arp_arpin();
+            //PRINTF("RXed an ARP packet\n");
+            /* If the above function invocation resulted in data that
+             *         should be sent out on the network, the global variable
+             *         uip_len is set to a value > 0. */
+            if (uip_len > 0) {
+                //PRINTF("RX of ARP packet causes more send\n");
+                enc28j60_driver_output_noarp();
+            }
+        }
+    }
+    
+    process_poll(&enc28j60_process);
+}
+/*---------------------------------------------------------------------------*/
+/*
+ * Finally, we define the process that does the work.
+ */
+PROCESS_THREAD(enc28j60_process, ev, data)
+{
+    //setup the poll handler
+    PROCESS_POLLHANDLER(pollhandler());
+    
+    uip_eth_addr our_uip_ethaddr;
+    PROCESS_BEGIN();
+    
+    uip_init();
+    uip_arp_init();
+    tcpip_set_outputfunc(enc28j60_driver_output);
+    
+    //set the mac address to be our serial number
+    uip_80211_addr tempMAC;
+    get_serial_number((char*)(uip_ethaddr.addr), sizeof(our_uip_ethaddr));
+    get_serial_number((char*)(&(tempMAC.addr[0])), 6);
+    uip_setethaddr(tempMAC);
+    
+    PRINTF("eth: MAC addr ");
+    
+    uint8_t i = 0;
+    for (i=0; i<sizeof(uip_ethaddr.addr); i++){
+        PRINTF("%2x ", uip_ethaddr.addr[i] );
+    }
+    PRINTF("\n");
+    
+    enc28j60Init(&uip_ethaddr);
+    
+    
+    process_poll(&enc28j60_process);
+    printf("eth: network initialized, rev %d\n", enc28j60getrev());
+    //process_start(&my_dhcp_process, "dhcp_now");
+    
+    
+    PROCESS_WAIT_EVENT_UNTIL(ev == PROCESS_EVENT_EXIT);
+    
+    //shutdown_the_hardware();
+//     PRINTF("shut down ethernet hardware.\n");
+    
+    PROCESS_END();
+}
+/*---------------------------------------------------------------------------*/
+
+
 
 
