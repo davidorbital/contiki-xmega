@@ -34,7 +34,7 @@
 
 #define ANNOUNCE_BOOT 1    //adds about 600 bytes to program size
 
-#define DEBUG 0
+#define DEBUG 1
 #if DEBUG
 #define PRINTF(FORMAT,args...) printf_P(PSTR(FORMAT),##args)
 #define PRINTSHORT(FORMAT,args...) printf_P(PSTR(FORMAT),##args)
@@ -63,6 +63,8 @@
 #include "interrupt.h"
 
 #include <util/delay.h>
+
+#include "xPLimpl.h"
 
 #ifdef POE_LCD_TEST
 #include "lcd-test.h"
@@ -118,6 +120,7 @@ void initialize(void)
   //enable interupts
   interrupt_init( PMIC_CTRL_HML_gm);
   interrupt_start();
+  initPWM();
   
   setup_clock();
   clock_init();
@@ -175,7 +178,12 @@ void log_message(char *m1, char *m2)
 int
 main(void)
 {
-
+    
+    //had to add for quick setting on boot
+    
+    PORTE.DIRSET = 1<<1;
+    PORTE.OUTSET = 1<<1;
+    
   initialize();
   while(1) {
     watchdog_periodic();
