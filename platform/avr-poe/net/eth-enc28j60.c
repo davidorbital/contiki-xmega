@@ -45,7 +45,7 @@ uint8_t spfd = -1;
 
 void enc28j60Reset(void) {
 //     printf("Eth reset\n");
-    _delay_ms(100);
+//     _delay_ms(100);
     //perform a software reset
     if (spi_lock(spfd)!= 0) {
         printf("could not lock\n");
@@ -54,9 +54,9 @@ void enc28j60Reset(void) {
     uint8_t send = 0xff;
     spi_write(spfd, &send, sizeof(send));
     spi_unlock(spfd);
-    _delay_ms(100);
+//     _delay_ms(100);
     enc28j60PhyWrite(PHCON1, 0x8000);
-    _delay_ms(1800);
+//     _delay_ms(1800);
 //     printf("ready to go\n");
 
     
