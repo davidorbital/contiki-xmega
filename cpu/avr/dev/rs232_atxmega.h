@@ -127,6 +127,7 @@
 #define XMEGA_BAUD_ASYNC_115200			0xA005
 #define XMEGA_BAUD_ASYNC_115200_2M		XMEGA_BAUD_ASYNC_115200
 #define XMEGA_BAUD_ASYNC_115200_32M		0xA417
+#define XMEGA_BAUD_ASYNC_256000_32M		0xA1B4
 
 
 /******************************************************************************/

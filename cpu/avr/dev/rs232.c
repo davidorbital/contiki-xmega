@@ -329,6 +329,10 @@ ISR(USARTC0_RXC_vect) { usart_generic_rx_vect(RS232_USARTC0); }
 ISR(USARTC1_TXC_vect) { usart_generic_tx_vect(RS232_USARTC1); }
 ISR(USARTC1_RXC_vect) { usart_generic_rx_vect(RS232_USARTC1); }
 
+#if defined(RS232_6)
+ISR(USARTF0_TXC_vect) { usart_generic_tx_vect(RS232_USARTF0); }
+ISR(USARTF0_RXC_vect) { usart_generic_rx_vect(RS232_USARTF0); }
+#endif
 
 #else  /* end xmega*/
 #error Please define the UART registers for your MCU!
