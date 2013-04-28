@@ -12,6 +12,9 @@ CONTIKI_TARGET_SOURCEFILES += contiki-main.c hello-world.c
 #ifdef SENSOR_APP
 CONTIKI_TARGET_SOURCEFILES += sensor-app.c
 #endif
+#ifdef DISPLAY_APP
+CONTIKI_TARGET_SOURCEFILES += display-app.c
+#endif
 #ifdef ALARM_APP
 CONTIKI_TARGET_SOURCEFILES += alarm-app.c
 #endif

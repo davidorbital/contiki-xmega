@@ -67,5 +67,6 @@
 //#define WATCHDOG_ENABLE	1
 //#define FORMAT_SD_CARD	1
 //#define ALARM_APP			1
+#define DISPLAY_APP			1
 
 #endif /* __CONTIKI_CONF_H__ */
